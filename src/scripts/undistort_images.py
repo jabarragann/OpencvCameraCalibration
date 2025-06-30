@@ -56,7 +56,7 @@ def main():
     # 1 means that the rectified image is decimated and shifted so that all the pixels from the original images from the cameras are retained
     # in the rectified images (no source image pixels are lost)
 
-    free_scaling_param = 0
+    free_scaling_param = 1
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(
         K, dist, (W, H), free_scaling_param, (W, H)
     )

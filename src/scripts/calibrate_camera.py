@@ -80,12 +80,30 @@ def main():
     # print(f"Object Points Shape: {object_points.shape}")
     # print(f"Image Points Shape: {image_points.shape}")
 
+    ########################
+    ## Undistortion model flags - Setting the right model is important for correct undistortion.
+
+    ## No flags lead to weird warpping after undistortion - the problem is k_3 coefficient 
+    # flags = 0
+
+    ## Rational model improve results but overcomplicates the model. 
+    ## Rational model enables 6 coefficients for the radial distortion.
+    # flags = cv2.CALIB_RATIONAL_MODEL ## This is important to correctly undistort the images
+
+    ## BEST fix - Set K3 to zero 
+    flags = cv2.CALIB_FIX_K3
+    
+    ## Setting tangent to zero didn't change much the results
+    # flags = cv2.CALIB_ZERO_TANGENT_DIST
+    ########################
+
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera( 
         object_points,  # type: ignore
         image_points,
         image_size,
         None,
         None,
+        flags=flags,
     )
 
     print(f"Camera Matrix:\n{mtx}")
