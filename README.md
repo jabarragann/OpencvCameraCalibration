@@ -19,3 +19,4 @@ python src/scripts/video_to_frames.py --input-video ./assets/sample_data/sample_
 ## Links:
 
 * [Brown conrady distortion model - shader toy](https://www.shadertoy.com/view/DslfR4)
+* [Calibration with charuco board](https://medium.com/@nflorent7/a-comprehensive-guide-to-camera-calibration-using-charuco-boards-and-opencv-for-perspective-9a0fa71ada5f)
