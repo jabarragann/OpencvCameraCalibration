@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from cam_calib_lib.CornerDetector import CharucoBoard
+from cam_calib_lib.Utils import save_camera_yaml
 
 
 def load_data(file_path: Path) -> List[npt.NDArray[np.uint8]]:
@@ -22,7 +23,7 @@ def load_data(file_path: Path) -> List[npt.NDArray[np.uint8]]:
 
 def get_all_object_points(
     list_of_images: List[npt.NDArray[np.uint8]], charuco_board: CharucoBoard
-) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+) -> Tuple[List[npt.NDArray[np.float32]], List[npt.NDArray[np.float32]]]:
     all_obj_poinst: List[npt.NDArray[np.float32]] = []
     all_img_points: List[npt.NDArray[np.float32]] = []
 
@@ -79,14 +80,41 @@ def main():
     # print(f"Object Points Shape: {object_points.shape}")
     # print(f"Image Points Shape: {image_points.shape}")
 
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
-        object_points, image_points, image_size, None, None
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera( 
+        object_points,  # type: ignore
+        image_points,
+        image_size,
+        None,
+        None,
     )
 
     print(f"Camera Matrix:\n{mtx}")
     print(f"Distortion Coefficients:\n{dist}")
     # print(f"Rotation Vectors:\n{rvecs}")
     # print(f"Translation Vectors:\n{tvecs}")
+
+    save_camera_yaml(
+        filename=str(img_path / "camera_calibration.yaml"),
+        image_size=image_size,
+        camera_matrix=mtx,
+        dist_coeffs=dist,
+        camera_name="charuco_camera",
+    )
+
+    ## Reprojection error
+    mean_error = 0
+    for i in range(len(object_points)):
+        imgpoints2, _ = cv2.projectPoints(  ## Assuming distortion
+            object_points[i], rvecs[i], tvecs[i], mtx, dist
+        )
+
+        # imgpoints2, _ = cv2.projectPoints( ## Assuming no distortion
+        #     object_points[i], rvecs[i], tvecs[i], mtx, np.zeros_like(dist)
+        # )
+        error = cv2.norm(image_points[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
+        mean_error += error
+
+    print(f"total error: {mean_error / len(object_points)}")
 
 
 if __name__ == "__main__":
