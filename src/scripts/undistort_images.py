@@ -61,7 +61,7 @@ def main():
         K, dist, (W, H), free_scaling_param, (W, H)
     )
 
-    img = cv2.imread(str(img_path / "frame_001005.png"))
+    img = cv2.imread(str(img_path / "frame_001755.png"))
     img = replace_black_with_blue(img)
     # undistort
     mapx, mapy = cv2.initUndistortRectifyMap(K, dist, None, newcameramtx, (W, H), 5)  # type: ignore
