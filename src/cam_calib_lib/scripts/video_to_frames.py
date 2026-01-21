@@ -35,7 +35,6 @@ def video_to_frames(ctx: MyContext, max_res: int = 0):
     frame_count = 0
     while cap.isOpened():
         ret, frame = cap.read()
-        print(ret)
 
         if not ret: # If no frame is returned exit.
             break
@@ -84,7 +83,7 @@ def run(ctx: MyContext):
         ctx.output_dir.mkdir(exist_ok=True)
     else:
         ctx.output_dir = Path(ctx.output_dir)
-        ctx.output_dir.mkdir(exist_ok=True)
+        ctx.output_dir.mkdir(exist_ok=True, parents=True)
 
     video_to_frames(ctx)
 

@@ -104,7 +104,7 @@ def main():
         marker_lenght=MARKER_LENGTH,
     )
 
-    img_path = Path(__file__).parent / "../../output/frames_5fps"
+    img_path = Path(__file__).parent / "../../../output/frames_5fps"
     train_images, test_images = load_data(img_path)
 
     object_points, image_points = get_all_object_points(
@@ -138,8 +138,8 @@ def main():
         object_points,  # type: ignore
         image_points,
         image_size,
-        None,
-        None,
+        None,  # type: ignore
+        None,  # type: ignore
         flags=flags,
     )
 

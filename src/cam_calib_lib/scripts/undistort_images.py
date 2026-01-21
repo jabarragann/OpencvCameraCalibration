@@ -38,7 +38,7 @@ def show_images(img1, img2, img3):
 
 
 def main():
-    img_path = Path(__file__).parent / "../../output/frames_5fps"
+    img_path = Path(__file__).parent / "../../../output/frames_5fps"
     camera_calib_file = img_path / "camera_calibration.yaml"
 
     calib_data = load_camera_yaml(str(camera_calib_file))

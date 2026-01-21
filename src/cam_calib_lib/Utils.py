@@ -78,5 +78,6 @@ def save_camera_yaml(
         # }
     }
 
+    print(f"Saving camera calibration to {filename}...")
     with open(filename, "w") as f:
         yaml.dump(data, f, sort_keys=False)
