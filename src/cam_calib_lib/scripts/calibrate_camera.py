@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from cam_calib_lib.CornerDetector import CharucoBoard
 from cam_calib_lib.Utils import save_camera_yaml
+from pyprojroot.here import here
 
 
 def load_data(
@@ -104,7 +105,8 @@ def main():
         marker_lenght=MARKER_LENGTH,
     )
 
-    img_path = Path(__file__).parent / "../../../output/frames_5fps"
+    root_path = here() # Path to root path from pyprojroot.
+    img_path = root_path / "output/frames_5fps"
     train_images, test_images = load_data(img_path)
 
     object_points, image_points = get_all_object_points(

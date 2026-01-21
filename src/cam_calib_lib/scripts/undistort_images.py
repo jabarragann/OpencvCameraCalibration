@@ -3,6 +3,7 @@ import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 from cam_calib_lib.Utils import load_camera_yaml
+from pyprojroot.here import here
 
 
 def replace_black_with_blue(img: np.ndarray) -> np.ndarray:
@@ -38,7 +39,8 @@ def show_images(img1, img2, img3):
 
 
 def main():
-    img_path = Path(__file__).parent / "../../../output/frames_5fps"
+    root_path = here() # Path to root path from pyprojroot.
+    img_path = root_path / "output/frames_5fps"
     camera_calib_file = img_path / "camera_calibration.yaml"
 
     calib_data = load_camera_yaml(str(camera_calib_file))
