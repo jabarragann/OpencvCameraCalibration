@@ -1,6 +1,8 @@
-# Camera Calibration with ChArUco Boards
+# Camera Calibration with Opencv (with regular and ChArUco Boards)
 
-## Install
+Simple scripts and documentation to calibrate cameras with Opencv.
+
+## Install package
 ```
 pip install -e .
 ```
@@ -20,7 +22,10 @@ python sample_scripts/calibrate_single_camera_debug.py \
 
 1. **video_to_frames.py**: Extracts frames from a video file.
 ```
-python src/cam_calib_lib/scripts/video_to_frames.py --input-video ./assets/sample_data_charuco/sample_video_7x10.mov --output-dir ./output/frames_5fps --target-fps 2 run
+python src/cam_calib_lib/scripts/video_to_frames.py \
+    --input-video ./assets/sample_data_charuco/sample_video_7x10.mov \
+    --output-dir ./output/frames_5fps \
+    --target-fps 2 run 
 ```
 2. **calibrate_camera.py**: Calibrates the camera using ChArUco boards
 ```
@@ -30,7 +35,6 @@ python src/cam_calib_lib/scripts/calibrate_camera.py
 ```
 python src/cam_calib_lib/scripts/undistort_images.py
 ```
-
 
 ## Links:
 
