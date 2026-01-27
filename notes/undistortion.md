@@ -13,6 +13,7 @@ Notice how the scaling parameter in opencv could hide the error in the undistort
     <figcaption>Figure 1: Aggressive distortion model. From left to right: the original image; the undistorted image with the scaling parameter set to 0 (all pixels included); and the undistorted image with the scaling parameter set to 1 (only valid pixels included).</figcaption>
 </figure>
 <br>
+
 <figure style="width: 100%; margin: 0;">
     <a id="fig:conservative_distortion_model">
     <img src="images/free_param0.png" alt="Conservative distortion model" style="width: 100%;" /> 
