@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from cam_calib_lib.CornerDetector import CharucoBoard
-from cam_calib_lib.Utils import save_camera_yaml
+from cam_calib_lib.Utils import save_calibration_yaml
 from pyprojroot.here import here
 
 
@@ -105,7 +105,7 @@ def main():
         marker_lenght=MARKER_LENGTH,
     )
 
-    root_path = here() # Path to root path from pyprojroot.
+    root_path = here()  # Path to root path from pyprojroot.
     img_path = root_path / "output/frames_5fps"
     train_images, test_images = load_data(img_path)
 
@@ -150,11 +150,11 @@ def main():
     # print(f"Rotation Vectors:\n{rvecs}")
     # print(f"Translation Vectors:\n{tvecs}")
 
-    save_camera_yaml(
+    save_calibration_yaml(
         filename=str(img_path / "camera_calibration.yaml"),
         image_size=image_size,
-        camera_matrix=mtx,
-        dist_coeffs=dist,
+        mtx=mtx,
+        dist=dist,
         camera_name="charuco_camera",
     )
 

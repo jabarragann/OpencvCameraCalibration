@@ -11,15 +11,18 @@ import numpy as np
 import numpy.typing as npt
 from tap import Tap
 
+from cam_calib_lib.OpencvBoards import OpenCVChessboard
+from cam_calib_lib.Utils import save_calibration_yaml
+
 
 class CliArgs(Tap):
     images_path: Path
-    output_path: Path = Path("./single_calibration_output")
-    chessboard_rows: int = 5
-    chessboard_cols: int = 8
-    square_size: float = 0.025  # in meters
+    output_path: Path
+    corners_per_board_row: int
+    corners_per_board_column: int
+    square_size: float  # in meters
+    camera: str  # "left" or "right"
     flags: int = cv2.CALIB_FIX_K3
-    camera: str = "left"  # "left" or "right"
 
 
 def load_camera_images(images_path: Path, camera: str) -> List[Path]:
@@ -30,7 +33,9 @@ def load_camera_images(images_path: Path, camera: str) -> List[Path]:
     images: List[Path] = []
 
     # Find all images for the specified camera
-    all_files = sorted(images_path.glob("*.png"))
+    all_files = sorted(
+        list(images_path.glob("*.png")) + list(images_path.glob("*.jpg"))
+    )
 
     # Extract frame numbers from filenames
     image_dict = {}
@@ -39,7 +44,7 @@ def load_camera_images(images_path: Path, camera: str) -> List[Path]:
     for file in all_files:
         filename = file.name
         if filename.startswith(prefix):
-            match = re.search(rf"{camera}-(\d+)\.png", filename)
+            match = re.search(rf"{camera}-(\d+)\.(png|jpg)", filename)
             if match:
                 frame_num = int(match.group(1))
                 image_dict[frame_num] = file
@@ -87,9 +92,8 @@ def detect_chessboard_corners(
 
 
 def prepare_calibration_data(
+    regular_chessboard: OpenCVChessboard,
     images: List[Path],
-    pattern_size: Tuple[int, int],
-    square_size: float,
 ) -> Tuple[
     List[npt.NDArray[np.float32]],
     List[npt.NDArray[np.float32]],
@@ -100,10 +104,8 @@ def prepare_calibration_data(
     Returns:
         (obj_points, img_points)
     """
-    # Prepare object points (3D points in real world space)
-    objp = np.zeros((pattern_size[0] * pattern_size[1], 3), np.float32)
-    objp[:, :2] = np.mgrid[0 : pattern_size[1], 0 : pattern_size[0]].T.reshape(-1, 2)
-    objp *= square_size
+
+    objp = regular_chessboard.create_chessboard_points()
 
     obj_points: List[npt.NDArray[np.float32]] = []
     img_points: List[npt.NDArray[np.float32]] = []
@@ -119,7 +121,15 @@ def prepare_calibration_data(
         img = np.asarray(img, dtype=np.uint8)
 
         # Detect corners
-        ret, corners = detect_chessboard_corners(img, pattern_size)
+        ret, corners = detect_chessboard_corners(img, regular_chessboard.partern_size)
+
+        # if ret:
+        #     img_copy = img.copy()
+        #     cv2.namedWindow(f"Corners for image {img_path.name}", cv2.WINDOW_NORMAL)
+        #     cv2.drawChessboardCorners(img_copy, pattern_size, corners, ret)
+        #     cv2.imshow(f"Corners for image {img_path.name}", img_copy)
+        #     cv2.waitKey(0)
+        #     cv2.destroyAllWindows()
 
         if ret:
             obj_points.append(objp)
@@ -137,9 +147,8 @@ def calculate_reprojection_error(
     img_points: List[npt.NDArray[np.float32]],
     rvecs: List[npt.NDArray[np.float32]],
     tvecs: List[npt.NDArray[np.float32]],
-    camera_matrix: npt.NDArray[np.float32],
-    dist_coeffs: npt.NDArray[np.float32],
-    use_distortion: bool = True,
+    mtx: npt.NDArray[np.float32],
+    dist: npt.NDArray[np.float32],
 ) -> float:
     """
     Calculate reprojection error for camera calibration.
@@ -151,7 +160,6 @@ def calculate_reprojection_error(
         tvecs: List of translation vectors
         camera_matrix: Camera intrinsic matrix
         dist_coeffs: Distortion coefficients
-        use_distortion: If True, use distortion model. If False, ignore distortion.
 
     Returns:
         Mean reprojection error in pixels
@@ -159,19 +167,15 @@ def calculate_reprojection_error(
     mean_error = 0.0
     num_points = 0
 
-    # Use zero distortion if not using distortion model
-    dist_to_use = dist_coeffs if use_distortion else np.zeros_like(dist_coeffs)
-
     for i in range(len(obj_points)):
         imgpoints2, _ = cv2.projectPoints(
-            obj_points[i], rvecs[i], tvecs[i], camera_matrix, dist_to_use
+            obj_points[i], rvecs[i], tvecs[i], mtx, dist 
         )
         error = cv2.norm(img_points[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
         mean_error += error
         num_points += 1
 
-    if num_points > 0:
-        mean_error /= num_points
+    mean_error /= len(obj_points) 
 
     return mean_error
 
@@ -205,13 +209,20 @@ def perform_single_calibration(
     #     | cv2.CALIB_FIX_K6
     #     | cv2.CALIB_ZERO_TANGENT_DIST
     # )
-    flags = (
-    cv2.CALIB_FIX_K3 |
-    cv2.CALIB_FIX_K4 |
-    cv2.CALIB_FIX_K5 |
-    cv2.CALIB_FIX_K6 |
-    cv2.CALIB_ZERO_TANGENT_DIST
-)
+
+    #     flags = (
+    #     cv2.CALIB_FIX_K3 |
+    #     cv2.CALIB_FIX_K4 |
+    #     cv2.CALIB_FIX_K5 |
+    #     cv2.CALIB_FIX_K6 |
+    #     cv2.CALIB_ZERO_TANGENT_DIST
+    # )
+
+    flags = cv2.CALIB_FIX_K3
+
+    # flags = None
+
+
     ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         obj_points,
         img_points,
@@ -294,19 +305,19 @@ def display_projected_corners(
     cv2.putText(
         img_display,
         text,
-        (10, 30),
+        (10, 400),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.7,
-        (255, 255, 255),
+        (150, 150, 0),
         2,
     )
     cv2.putText(
         img_display,
         "Green: Ground truth, Red: Projected, Yellow: Error vectors",
-        (10, 60),
+        (10, 430),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255, 255, 255),
+        0.7,
+        (150, 150, 0),
         2,
     )
 
@@ -321,14 +332,30 @@ def display_projected_corners(
 
 def display_undistorted_image(
     img: npt.NDArray[np.uint8],
-    camera_matrix: npt.NDArray[np.float32],
-    dist_coeffs: npt.NDArray[np.float32],
+    mtx: npt.NDArray[np.float32],
+    dist: npt.NDArray[np.float32],
     camera: str,
 ):
     """
     Display the undistorted image using the camera intrinsics.
     """
-    undistorted = cv2.undistort(img, camera_matrix, dist_coeffs)
+    w, h = img.shape[:2]
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+    # undistorted = cv2.undistort(img, mtx, dist)
+    undistorted = cv2.undistort(img, mtx, dist, None, newcameramtx)
+
+    #### debug
+    new_camera_matrix_alpha0,_ = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 0, (w, h))
+    new_camera_matrix_alpha1,_ = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+
+    def pretty_matrix(mat, title):
+        np.set_printoptions(precision=2, suppress=True, floatmode='fixed')
+        print(f"{title}:\n{mat}\n")
+
+    pretty_matrix(mtx, "Original Camera Matrix (mtx)")
+    pretty_matrix(new_camera_matrix_alpha0, "New Camera Matrix (alpha=0)")
+    pretty_matrix(new_camera_matrix_alpha1, "New Camera Matrix (alpha=1)")
+    ####
 
     concatenated = np.hstack([img, undistorted])
     cv2.namedWindow(
@@ -352,18 +379,26 @@ def save_calibration_results(
     """Save calibration results to numpy files in the same format as stereo calibration."""
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Save in the same format as stereo calibration
-    np.save(str(output_path / f"{camera}_camera_matrix.npy"), camera_matrix)
-    np.save(str(output_path / f"{camera}_dist_coeffs.npy"), dist_coeffs)
+    save_calibration_yaml(
+        filename=str(output_path / f"{camera}_calibration.yaml"),
+        image_size=image_size,
+        mtx=camera_matrix,
+        dist=dist_coeffs,
+        camera_name=camera,
+    )
 
-    # Save metadata
-    metadata = {
-        "image_size": image_size,
-        "reprojection_error": reprojection_error,
-    }
-    np.save(str(output_path / "metadata.npy"), metadata)
+    # # Save in the same format as stereo calibration
+    # np.save(str(output_path / f"{camera}_camera_matrix.npy"), camera_matrix)
+    # np.save(str(output_path / f"{camera}_dist_coeffs.npy"), dist_coeffs)
 
-    print(f"\nCalibration results saved to {output_path}")
+    # # Save metadata
+    # metadata = {
+    #     "image_size": image_size,
+    #     "reprojection_error": reprojection_error,
+    # }
+    # np.save(str(output_path / "metadata.npy"), metadata)
+
+    # print(f"\nCalibration results saved to {output_path}")
 
 
 def main(args: CliArgs):
@@ -372,6 +407,12 @@ def main(args: CliArgs):
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
     assert args.camera in ["left", "right"], (
         f"Camera must be 'left' or 'right', got '{args.camera}'"
+    )
+
+    regular_chessboard = OpenCVChessboard(
+        corners_per_row=args.corners_per_board_row,
+        corners_per_column=args.corners_per_board_column,
+        square_size=args.square_size,
     )
 
     # Load images for the specified camera
@@ -386,12 +427,8 @@ def main(args: CliArgs):
         raise ValueError(f"Could not load first image: {images[0]}")
     image_size = (first_img.shape[1], first_img.shape[0])
 
-    pattern_size = (args.chessboard_rows, args.chessboard_cols)
-
     # Prepare calibration data
-    obj_points, img_points = prepare_calibration_data(
-        images, pattern_size, args.square_size
-    )
+    obj_points, img_points = prepare_calibration_data(regular_chessboard, images)
 
     if len(obj_points) < 10:
         print(
@@ -412,7 +449,6 @@ def main(args: CliArgs):
         tvecs,
         camera_matrix,
         dist_coeffs,
-        use_distortion=True,
     )
     error_without_distortion = calculate_reprojection_error(
         obj_points,
@@ -420,8 +456,7 @@ def main(args: CliArgs):
         rvecs,
         tvecs,
         camera_matrix,
-        dist_coeffs,
-        use_distortion=False,
+        np.zeros_like(dist_coeffs),
     )
 
     print(f"Reprojection error (with distortion): {error_with_distortion:.4f} pixels")
@@ -440,9 +475,11 @@ def main(args: CliArgs):
     )
 
     # Display projected vs ground truth corners for first image
-    print(f"\nDisplaying projected vs ground truth corners for first {args.camera} image...")
+    print(
+        f"\nDisplaying projected vs ground truth corners for first {args.camera} image..."
+    )
     first_img = cv2.imread(str(images[0]))
-    
+
     if first_img is not None and len(obj_points) > 0:
         first_img = np.asarray(first_img, dtype=np.uint8)
         # Use the first valid image's data

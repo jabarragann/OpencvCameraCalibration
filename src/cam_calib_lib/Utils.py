@@ -1,9 +1,6 @@
 import yaml
 import numpy as np
 
-import yaml
-import numpy as np
-
 
 def load_camera_yaml(filename: str):
     with open(filename, "r") as f:
@@ -36,48 +33,90 @@ def load_camera_yaml(filename: str):
         # "projection_matrix": projection_matrix,
     }
 
+def format_array(arr, per_row=3):
+    values = arr.flatten(order="C")
+    lines = []
 
-def save_camera_yaml(
+    for i in range(0, len(values), per_row):
+        chunk = values[i:i+per_row]
+        # Format each number: zero -> 0.0, otherwise 6 decimal points
+        formatted = []
+        for v in chunk:
+            if v == 0.0:
+                s = f"{v:.1f}"
+            else:
+                s = f"{v:.6f}"
+
+            # Split into integer and fractional parts
+            if '.' in s:
+                int_part, frac_part = s.split('.')
+                # Pad integer part to the left, fractional part to the right
+                s = f"{int_part:>6}.{frac_part:<6}"
+            else:
+                s = f"{s:>12}"
+
+            formatted.append(s)
+        line = ", ".join(formatted)
+        lines.append(line)
+
+    return lines
+
+def modify_string_for_yaml(formated_arry: list[str]):
+    """
+    Modifies formated array to fit into the yaml string.
+    """
+
+    first_line_text = "  data: ["
+    other_line_text = "         "
+    last_line_text_end = "]"
+
+    assert len(formated_arry) == 3, "Expected 3 lines of data"
+    results = []
+    results.append(first_line_text + formated_arry[0])
+    results.append(other_line_text + formated_arry[1])
+    results.append(other_line_text + formated_arry[2]+ last_line_text_end)
+
+    return "\n".join(results)
+
+
+def create_yaml_string(image_size: tuple[int, int], mtx: np.ndarray, dist: np.ndarray, camera_name: str):
+    mtx_str_data = modify_string_for_yaml(format_array(mtx))
+
+    return f"""image_width: {image_size[0]}
+image_height: {image_size[1]}
+camera_name: {camera_name}
+camera_matrix:
+  rows: 3
+  cols: 3
+{mtx_str_data}
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: {dist.size}
+  data: [{", ".join(f"{v:.6f}" for v in dist.flatten())}]
+"""
+
+def save_calibration_yaml(
     filename: str,
     image_size: tuple[int, int],
-    camera_matrix: np.ndarray,
-    dist_coeffs: np.ndarray,
-    camera_name: str = "my_camera",
+    mtx: np.ndarray,
+    dist: np.ndarray,
+    camera_name: str,
 ):
-    fx, fy = camera_matrix[0, 0], camera_matrix[1, 1]
-    cx, cy = camera_matrix[0, 2], camera_matrix[1, 2]
-
-    data = {
-        "image_width": image_size[0],
-        "image_height": image_size[1],
-        "camera_name": camera_name,
-        "camera_matrix": {
-            "rows": 3,
-            "cols": 3,
-            "data": camera_matrix.flatten(order="C").tolist(),
-        },
-        "distortion_model": "plumb_bob",
-        "distortion_coefficients": {
-            "rows": 1,
-            "cols": len(dist_coeffs.flatten()),
-            "data": dist_coeffs.flatten().tolist(),
-        },
-        # "rectification_matrix": {
-        #     "rows": 3,
-        #     "cols": 3,
-        #     "data": np.eye(3, dtype=float).flatten().tolist()
-        # },
-        # "projection_matrix": {
-        #     "rows": 3,
-        #     "cols": 4,
-        #     "data": [
-        #         fx, 0.0, cx, 0.0,
-        #         0.0, fy, cy, 0.0,
-        #         0.0, 0.0, 1.0, 0.0
-        #     ]
-        # }
-    }
-
-    print(f"Saving camera calibration to {filename}...")
     with open(filename, "w") as f:
-        yaml.dump(data, f, sort_keys=False)
+        yaml_string = create_yaml_string(image_size, mtx, dist, camera_name)
+        f.write(yaml_string)
+
+
+if __name__ == "__main__":
+    mtx = np.array([[1794.471601, 0.0, 1043.039610],
+                    [0.0, 1806.394272, 479.158587],
+                    [0.0, 0.0, 1.000000]])
+    dist = np.array([-0.323355, 0.464083, 0.001455, -0.008386, 0.000000])
+
+    print("format_array")
+    print(",\n".join(format_array(mtx)))
+    print("modify_string_for_yaml")
+    print(modify_string_for_yaml(format_array(mtx)))
+    print("create_yaml_string")
+    print(create_yaml_string((1920, 1080), mtx, dist, "test"))
