@@ -132,8 +132,12 @@ def prepare_calibration_data(
         right_img = np.asarray(right_img, dtype=np.uint8)
 
         # Detect corners in both images
-        left_ret, left_corners = detect_chessboard_corners(left_img, regular_chessboard.partern_size)
-        right_ret, right_corners = detect_chessboard_corners(right_img, regular_chessboard.partern_size)
+        left_ret, left_corners = detect_chessboard_corners(
+            left_img, regular_chessboard.partern_size
+        )
+        right_ret, right_corners = detect_chessboard_corners(
+            right_img, regular_chessboard.partern_size
+        )
 
         # if left_ret:
         #     img = left_img.copy()
@@ -279,7 +283,7 @@ def compute_rectification_maps(
         R,
         T,
         flags=cv2.CALIB_ZERO_DISPARITY,
-        alpha=0.9,  # 0=valid pixels only, 1=all pixels, 0.9=good balance
+        alpha=0.6,  # 0=valid pixels only, 1=all pixels, 0.9=good balance
     )
 
     # Compute rectification maps
@@ -302,6 +306,8 @@ def rectify_and_display(
     right_map1: npt.NDArray,
     right_map2: npt.NDArray,
     window_name: str = "Stereo Rectified Images",
+    display: bool = True,
+    save_vis_path: Optional[Path] = None,
 ) -> None:
     """
     Rectify a pair of stereo images and display them side by side with OpenCV.
@@ -325,22 +331,17 @@ def rectify_and_display(
 
     # Concatenate images side by side
     stereo_pair = np.hstack([left_rectified, right_rectified])
-    # Make the window resizable before showing the image
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    # Optionally, you can resize the image to fit your screen, e.g. to max width 1600
-    max_width = 1000
-    height, width = stereo_pair.shape[:2]
-    if width > max_width:
-        scale = max_width / width
-        stereo_pair = cv2.resize(
-            stereo_pair, (max_width, int(height * scale)), interpolation=cv2.INTER_AREA
-        )
+
+    if save_vis_path is not None:
+        cv2.imwrite(str(save_vis_path), stereo_pair)
 
     # Display
-    cv2.imshow(window_name, stereo_pair)
-    print("Displaying rectified images. Press any key to close...")
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    if display:
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.imshow(window_name, stereo_pair)
+        print("Displaying rectified images. Press any key to close...")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 def display_undistorted_images(
@@ -437,9 +438,7 @@ def main(args: CliArgs):
 
     # Prepare calibration data
     obj_points, left_img_points, right_img_points, valid_pairs = (
-        prepare_calibration_data(
-            regular_chessboard, left_images, right_images
-        )
+        prepare_calibration_data(regular_chessboard, left_images, right_images)
     )
 
     if len(obj_points) < 10:
@@ -522,6 +521,23 @@ def main(args: CliArgs):
         )
 
     print("\nCalibration complete!")
+
+    print("Saving rectified images...")
+    save_vis_path = args.output_path / "rect_vis"
+    save_vis_path.mkdir(parents=True, exist_ok=True)
+    for i in range(len(left_images)):
+        left_img = cv2.imread(str(left_images[i]))
+        right_img = cv2.imread(str(right_images[i]))
+        rectify_and_display(
+            left_img,
+            right_img,
+            left_map1,
+            left_map2,
+            right_map1,
+            right_map2,
+            display=False,
+            save_vis_path=save_vis_path / f"rectified_stereo_pair_{i}.png",
+        )
 
 
 if __name__ == "__main__":
