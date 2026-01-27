@@ -9,19 +9,13 @@ from typing import List, Tuple, Optional
 import cv2
 import numpy as np
 import numpy.typing as npt
-from tap import Tap
 
+from cam_calib_lib.ArgumentParsers import CameraCalibrationArgs
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
 from cam_calib_lib.Utils import save_calibration_yaml
 
 
-class CliArgs(Tap):
-    images_path: Path
-    output_path: Path
-    corners_per_board_row: int
-    corners_per_board_column: int
-    square_size: float  # in meters
-    camera: str  # "left" or "right"
+class CliArgs(CameraCalibrationArgs):
     print_debug: bool = False
     flags: int = cv2.CALIB_FIX_K3
 
@@ -174,14 +168,12 @@ def calculate_reprojection_error(
     num_points = 0
 
     for i in range(len(obj_points)):
-        imgpoints2, _ = cv2.projectPoints(
-            obj_points[i], rvecs[i], tvecs[i], mtx, dist 
-        )
+        imgpoints2, _ = cv2.projectPoints(obj_points[i], rvecs[i], tvecs[i], mtx, dist)
         error = cv2.norm(img_points[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
         mean_error += error
         num_points += 1
 
-    mean_error /= len(obj_points) 
+    mean_error /= len(obj_points)
 
     return mean_error
 
@@ -227,7 +219,6 @@ def perform_single_calibration(
     flags = cv2.CALIB_FIX_K3
 
     # flags = None
-
 
     ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         obj_points,
@@ -346,16 +337,20 @@ def display_undistorted_image(
     Display the undistorted image using the camera intrinsics.
     """
     w, h = img.shape[:2]
-    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
     # undistorted = cv2.undistort(img, mtx, dist)
     undistorted = cv2.undistort(img, mtx, dist, None, newcameramtx)
 
     #### debug
-    new_camera_matrix_alpha0,_ = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 0, (w, h))
-    new_camera_matrix_alpha1,_ = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+    new_camera_matrix_alpha0, _ = cv2.getOptimalNewCameraMatrix(
+        mtx, dist, (w, h), 0, (w, h)
+    )
+    new_camera_matrix_alpha1, _ = cv2.getOptimalNewCameraMatrix(
+        mtx, dist, (w, h), 1, (w, h)
+    )
 
     def pretty_matrix(mat, title):
-        np.set_printoptions(precision=2, suppress=True, floatmode='fixed')
+        np.set_printoptions(precision=2, suppress=True, floatmode="fixed")
         print(f"{title}:\n{mat}\n")
 
     pretty_matrix(mtx, "Original Camera Matrix (mtx)")
@@ -411,8 +406,8 @@ def main(args: CliArgs):
     assert isinstance(args.images_path, Path)
     assert isinstance(args.output_path, Path)
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
-    assert args.camera in ["left", "right"], (
-        f"Camera must be 'left' or 'right', got '{args.camera}'"
+    assert args.camera_name in ["left", "right"], (
+        f"Camera must be 'left' or 'right', got '{args.camera_name}'"
     )
 
     regular_chessboard = OpenCVChessboard(
@@ -422,10 +417,10 @@ def main(args: CliArgs):
     )
 
     # Load images for the specified camera
-    images = load_camera_images(args.images_path, args.camera)
+    images = load_camera_images(args.images_path, args.camera_name)
 
     if len(images) == 0:
-        raise ValueError(f"No valid images found for {args.camera} camera!")
+        raise ValueError(f"No valid images found for {args.camera_name} camera!")
 
     # Get image size from first image
     first_img = cv2.imread(str(images[0]))
@@ -434,7 +429,9 @@ def main(args: CliArgs):
     image_size = (first_img.shape[1], first_img.shape[0])
 
     # Prepare calibration data
-    obj_points, img_points = prepare_calibration_data(regular_chessboard, images, print_debug=args.print_debug)
+    obj_points, img_points = prepare_calibration_data(
+        regular_chessboard, images, print_debug=args.print_debug
+    )
 
     if len(obj_points) < 10:
         print(
@@ -477,12 +474,12 @@ def main(args: CliArgs):
         dist_coeffs,
         image_size,
         error_with_distortion,
-        args.camera,
+        args.camera_name,
     )
 
     # Display projected vs ground truth corners for first image
     print(
-        f"\nDisplaying projected vs ground truth corners for first {args.camera} image..."
+        f"\nDisplaying projected vs ground truth corners for first {args.camera_name} image..."
     )
     first_img = cv2.imread(str(images[0]))
 
@@ -497,18 +494,17 @@ def main(args: CliArgs):
             tvecs[0],
             camera_matrix,
             dist_coeffs,
-            args.camera,
+            args.camera_name,
             use_distortion=True,
         )
 
     # Test undistortion on first image
-    print(f"\nTesting undistortion on first {args.camera} image...")
+    print(f"\nTesting undistortion on first {args.camera_name} image...")
     img = cv2.imread(str(images[0]))
 
     if img is not None:
         img = np.asarray(img, dtype=np.uint8)
-        display_undistorted_image(img, camera_matrix, dist_coeffs, args.camera)
-
+        display_undistorted_image(img, camera_matrix, dist_coeffs, args.camera_name)
     print("\nCalibration complete!")
 
 

@@ -17,7 +17,7 @@ from cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera impo
 class CliArgs(Tap):
     images_path: Path
     camera_calibration: Path
-    camera: str = "left"  # "left" or "right"
+    camera_name: str = "left"  # "left" or "right"
     corners_per_board_row: int = 8
     corners_per_board_column: int = 5
     square_size: float = 0.01  # in meters
@@ -74,7 +74,7 @@ def main(args: CliArgs):
         corners_per_column=args.corners_per_board_column,
         square_size=args.square_size,
     )
-    images = load_camera_images(args.images_path, args.camera)
+    images = load_camera_images(args.images_path, args.camera_name)
 
     obj_points, img_points = prepare_calibration_data(regular_chessboard, images)
 
@@ -108,7 +108,7 @@ def main(args: CliArgs):
     )
 
     print(
-        f"\nDisplaying projected vs ground truth corners for first {args.camera} image..."
+        f"\nDisplaying projected vs ground truth corners for first {args.camera_name} image..."
     )
     first_img = cv2.imread(str(images[0]))
 
@@ -123,7 +123,7 @@ def main(args: CliArgs):
             tvecs[0],
             mtx,
             dist,
-            args.camera,
+            args.camera_name,
             use_distortion=True,
         )
 
