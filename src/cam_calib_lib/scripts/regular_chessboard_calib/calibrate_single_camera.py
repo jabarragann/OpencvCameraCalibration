@@ -132,8 +132,6 @@ def prepare_calibration_data(
 
         if print_debug:
             if ret:
-                obj_points.append(objp)
-                img_points.append(corners)
                 print(f"  Image {idx}: ✓ Corners detected")
             else:
                 print(f"  Image {idx}: ✗ Failed to detect corners")
