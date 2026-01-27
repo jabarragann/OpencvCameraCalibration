@@ -8,9 +8,10 @@ pydebug() {
 
 python -m cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera \
     --images_path output/calib_011225/calibration_data \
-    --camera left \
+    --camera right \
     --corners_per_board_row 8 \
     --corners_per_board_column 5 \
     --square_size 0.01 \
-    --output_path output/calib_011225/calib_results_left
+    --output_path output/calib_011225/calib_results_right \
+    --print_debug 
 

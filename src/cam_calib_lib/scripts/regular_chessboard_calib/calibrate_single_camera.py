@@ -22,6 +22,7 @@ class CliArgs(Tap):
     corners_per_board_column: int
     square_size: float  # in meters
     camera: str  # "left" or "right"
+    print_debug: bool = False
     flags: int = cv2.CALIB_FIX_K3
 
 
@@ -433,7 +434,7 @@ def main(args: CliArgs):
     image_size = (first_img.shape[1], first_img.shape[0])
 
     # Prepare calibration data
-    obj_points, img_points = prepare_calibration_data(regular_chessboard, images, print_debug=False)
+    obj_points, img_points = prepare_calibration_data(regular_chessboard, images, print_debug=args.print_debug)
 
     if len(obj_points) < 10:
         print(
