@@ -5,7 +5,18 @@
 pip install -e .
 ```
 
-## Scripts
+## Calibration with regular chessboard
+
+```bash
+python sample_scripts/calibrate_single_camera_debug.py \
+    --images_path ./assets/opencv_calib_tutorial/ \
+    --camera left \
+    --chessboard_rows 9 \
+    --chessboard_cols 6 \
+    --square_size 1.0 
+```
+
+## Calibration with ChArUco boards
 
 1. **video_to_frames.py**: Extracts frames from a video file.
 ```
