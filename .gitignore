@@ -1,4 +1,5 @@
 .vscode
 output
 __pycache__
-*.egg-info
+*.egg-info_
+temp/
