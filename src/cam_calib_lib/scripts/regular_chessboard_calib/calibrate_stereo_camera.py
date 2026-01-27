@@ -11,13 +11,15 @@ import numpy as np
 import numpy.typing as npt
 from tap import Tap
 
+from cam_calib_lib.OpencvBoards import OpenCVChessboard
+
 
 class CliArgs(Tap):
     images_path: Path
     output_path: Path = Path("./stereo_calibration_output")
-    chessboard_rows: int = 5
-    chessboard_cols: int = 8
-    square_size: float = 0.025  # in meters
+    corners_per_board_row: int = 8
+    corners_per_board_column: int = 5
+    square_size: float = 0.01  # in meters
     flags: int = cv2.CALIB_FIX_K3
 
 
@@ -94,10 +96,9 @@ def detect_chessboard_corners(
 
 
 def prepare_calibration_data(
+    regular_chessboard: OpenCVChessboard,
     left_images: List[Path],
     right_images: List[Path],
-    pattern_size: Tuple[int, int],
-    square_size: float,
 ) -> Tuple[
     List[npt.NDArray[np.float32]],
     List[npt.NDArray[np.float32]],
@@ -110,10 +111,8 @@ def prepare_calibration_data(
     Returns:
         (obj_points, left_img_points, right_img_points, valid_pairs)
     """
-    # Prepare object points (3D points in real world space)
-    objp = np.zeros((pattern_size[0] * pattern_size[1], 3), np.float32)
-    objp[:, :2] = np.mgrid[0 : pattern_size[1], 0 : pattern_size[0]].T.reshape(-1, 2)
-    objp *= square_size
+
+    objp = regular_chessboard.create_chessboard_points()
 
     obj_points: List[npt.NDArray[np.float32]] = []
     left_img_points: List[npt.NDArray[np.float32]] = []
@@ -133,8 +132,8 @@ def prepare_calibration_data(
         right_img = np.asarray(right_img, dtype=np.uint8)
 
         # Detect corners in both images
-        left_ret, left_corners = detect_chessboard_corners(left_img, pattern_size)
-        right_ret, right_corners = detect_chessboard_corners(right_img, pattern_size)
+        left_ret, left_corners = detect_chessboard_corners(left_img, regular_chessboard.partern_size)
+        right_ret, right_corners = detect_chessboard_corners(right_img, regular_chessboard.partern_size)
 
         # if left_ret:
         #     img = left_img.copy()
@@ -418,6 +417,12 @@ def main(args: CliArgs):
     assert isinstance(args.output_path, Path)
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
 
+    regular_chessboard = OpenCVChessboard(
+        corners_per_row=args.corners_per_board_row,
+        corners_per_column=args.corners_per_board_column,
+        square_size=args.square_size,
+    )
+
     # Load stereo image pairs
     left_images, right_images = load_stereo_images(args.images_path)
 
@@ -430,12 +435,10 @@ def main(args: CliArgs):
         raise ValueError(f"Could not load first image: {left_images[0]}")
     image_size = (first_img.shape[1], first_img.shape[0])
 
-    pattern_size = (args.chessboard_rows, args.chessboard_cols)
-
     # Prepare calibration data
     obj_points, left_img_points, right_img_points, valid_pairs = (
         prepare_calibration_data(
-            left_images, right_images, pattern_size, args.square_size
+            regular_chessboard, left_images, right_images
         )
     )
 
@@ -513,9 +516,10 @@ def main(args: CliArgs):
             right_camera_matrix,
             right_dist_coeffs,
         )
-        # rectify_and_display(
-        #     left_img, right_img, left_map1, left_map2, right_map1, right_map2
-        # )
+
+        rectify_and_display(
+            left_img, right_img, left_map1, left_map2, right_map1, right_map2
+        )
 
     print("\nCalibration complete!")
 
