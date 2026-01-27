@@ -1,8 +1,7 @@
-from pathlib import Path
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
-from cam_calib_lib.Utils import load_camera_yaml
+from cam_calib_lib.Utils import load_camera_calib
 from pyprojroot.here import here
 
 
@@ -39,11 +38,11 @@ def show_images(img1, img2, img3):
 
 
 def main():
-    root_path = here() # Path to root path from pyprojroot.
+    root_path = here()  # Path to root path from pyprojroot.
     img_path = root_path / "output/frames_5fps"
     camera_calib_file = img_path / "camera_calibration.yaml"
 
-    calib_data = load_camera_yaml(str(camera_calib_file))
+    calib_data = load_camera_calib(camera_calib_file)
 
     K = calib_data["camera_matrix"]
     dist = calib_data["dist_coeffs"]

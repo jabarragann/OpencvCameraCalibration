@@ -94,6 +94,7 @@ def detect_chessboard_corners(
 def prepare_calibration_data(
     regular_chessboard: OpenCVChessboard,
     images: List[Path],
+    print_debug: bool = False,
 ) -> Tuple[
     List[npt.NDArray[np.float32]],
     List[npt.NDArray[np.float32]],
@@ -122,6 +123,9 @@ def prepare_calibration_data(
 
         # Detect corners
         ret, corners = detect_chessboard_corners(img, regular_chessboard.partern_size)
+        if ret:
+            obj_points.append(objp)
+            img_points.append(corners)
 
         # if ret:
         #     img_copy = img.copy()
@@ -131,12 +135,13 @@ def prepare_calibration_data(
         #     cv2.waitKey(0)
         #     cv2.destroyAllWindows()
 
-        if ret:
-            obj_points.append(objp)
-            img_points.append(corners)
-            print(f"  Image {idx}: ✓ Corners detected")
-        else:
-            print(f"  Image {idx}: ✗ Failed to detect corners")
+        if print_debug:
+            if ret:
+                obj_points.append(objp)
+                img_points.append(corners)
+                print(f"  Image {idx}: ✓ Corners detected")
+            else:
+                print(f"  Image {idx}: ✗ Failed to detect corners")
 
     print(f"\nSuccessfully detected corners in {len(obj_points)}/{len(images)} images")
     return obj_points, img_points
@@ -428,7 +433,7 @@ def main(args: CliArgs):
     image_size = (first_img.shape[1], first_img.shape[0])
 
     # Prepare calibration data
-    obj_points, img_points = prepare_calibration_data(regular_chessboard, images)
+    obj_points, img_points = prepare_calibration_data(regular_chessboard, images, print_debug=False)
 
     if len(obj_points) < 10:
         print(
