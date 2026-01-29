@@ -8,7 +8,12 @@ import numpy.typing as npt
 import numpy as np
 
 from cam_calib_lib.scripts.calibrate_camera import calculate_reprojection_error
-from cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera import display_projected_corners, display_undistorted_image, perform_single_calibration, save_calibration_results
+from cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera import (
+    display_projected_corners,
+    display_undistorted_image,
+    perform_single_calibration,
+    save_calibration_results,
+)
 
 
 class CliArgs(CameraCalibrationCharucoArgs):
@@ -94,7 +99,7 @@ def main(args: CliArgs):
         squares_in_y_dim=args.squares_in_y_dim,
         aruco_dict=aruco_dict,
         square_length=args.square_size,
-        marker_lenght=args.marker_size,
+        marker_length=args.marker_size,
     )
 
     # Load images for the specified camera
@@ -118,7 +123,6 @@ def main(args: CliArgs):
         print(
             f"Warning: Only {len(obj_points)} valid images found. At least 10 images are recommended for good calibration."
         )
-
 
     ## All the same here below.
     # Perform single camera calibration

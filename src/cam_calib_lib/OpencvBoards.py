@@ -76,13 +76,13 @@ class OpenCVCharucoBoard:
     squares_in_y_dim: int
     aruco_dict: Any
     square_length: float
-    marker_lenght: float
+    marker_length: float
 
     def __post_init__(self):
         self.board = cv2.aruco.CharucoBoard(
             (self.squares_in_x_dim, self.squares_in_y_dim),
             squareLength=self.square_length,
-            markerLength=self.marker_lenght,
+            markerLength=self.marker_length,
             dictionary=self.aruco_dict,
         )
 

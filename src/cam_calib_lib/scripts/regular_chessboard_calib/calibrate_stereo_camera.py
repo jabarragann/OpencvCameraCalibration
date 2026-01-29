@@ -40,12 +40,12 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
 
     for file in all_files:
         filename = file.name
-        if filename.startswith("left-"):
+        if filename.startswith("left"):
             match = re.search(r"left-(\d+)\.png", filename)
             if match:
                 frame_num = int(match.group(1))
                 left_dict[frame_num] = file
-        elif filename.startswith("right-"):
+        elif filename.startswith("right"):
             match = re.search(r"right-(\d+)\.png", filename)
             if match:
                 frame_num = int(match.group(1))
@@ -60,39 +60,6 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
 
     print(f"Found {len(left_images)} stereo image pairs")
     return left_images, right_images
-
-
-def detect_chessboard_corners(
-    image: npt.NDArray[np.uint8],
-    pattern_size: Tuple[int, int],
-) -> Tuple[bool, Optional[npt.NDArray[np.float32]]]:
-    """
-    Detect chessboard corners in an image.
-
-    Args:
-        image: Input image
-        pattern_size: (rows, cols) of inner corners
-
-    Returns:
-        (success, corners) tuple
-    """
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    ret, corners = cv2.findChessboardCorners(
-        gray,
-        pattern_size,
-        flags=cv2.CALIB_CB_ADAPTIVE_THRESH
-        + cv2.CALIB_CB_FAST_CHECK
-        + cv2.CALIB_CB_NORMALIZE_IMAGE,
-    )
-
-    if ret:
-        # Refine corner positions
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-        return True, corners
-
-    return False, None
 
 
 def prepare_calibration_data(
@@ -112,7 +79,8 @@ def prepare_calibration_data(
         (obj_points, left_img_points, right_img_points, valid_pairs)
     """
 
-    objp = regular_chessboard.create_chessboard_points()
+    objp = regular_chessboard.get_object_points(corners=None, ids=None) # type: ignore
+    
 
     obj_points: List[npt.NDArray[np.float32]] = []
     left_img_points: List[npt.NDArray[np.float32]] = []
@@ -132,12 +100,8 @@ def prepare_calibration_data(
         right_img = np.asarray(right_img, dtype=np.uint8)
 
         # Detect corners in both images
-        left_ret, left_corners = detect_chessboard_corners(
-            left_img, regular_chessboard.pattern_size
-        )
-        right_ret, right_corners = detect_chessboard_corners(
-            right_img, regular_chessboard.pattern_size
-        )
+        left_ret, left_corners = regular_chessboard.detect_corners(left_img)
+        right_ret, right_corners = regular_chessboard.detect_corners(right_img)
 
         # if left_ret:
         #     img = left_img.copy()
