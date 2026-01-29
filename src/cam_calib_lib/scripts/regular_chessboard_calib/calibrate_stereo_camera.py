@@ -133,10 +133,10 @@ def prepare_calibration_data(
 
         # Detect corners in both images
         left_ret, left_corners = detect_chessboard_corners(
-            left_img, regular_chessboard.partern_size
+            left_img, regular_chessboard.pattern_size
         )
         right_ret, right_corners = detect_chessboard_corners(
-            right_img, regular_chessboard.partern_size
+            right_img, regular_chessboard.pattern_size
         )
 
         # if left_ret:

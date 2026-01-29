@@ -5,7 +5,7 @@ Performs calibration for either left or right camera.
 
 import re
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple 
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -53,39 +53,6 @@ def load_camera_images(images_path: Path, camera: str) -> List[Path]:
     return images
 
 
-def detect_chessboard_corners(
-    image: npt.NDArray[np.uint8],
-    pattern_size: Tuple[int, int],
-) -> Tuple[bool, Optional[npt.NDArray[np.float32]]]:
-    """
-    Detect chessboard corners in an image.
-
-    Args:
-        image: Input image
-        pattern_size: (rows, cols) of inner corners
-
-    Returns:
-        (success, corners) tuple
-    """
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    ret, corners = cv2.findChessboardCorners(
-        gray,
-        pattern_size,
-        flags=cv2.CALIB_CB_ADAPTIVE_THRESH
-        + cv2.CALIB_CB_FAST_CHECK
-        + cv2.CALIB_CB_NORMALIZE_IMAGE,
-    )
-
-    if ret:
-        # Refine corner positions
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-        return True, corners
-
-    return False, None
-
-
 def prepare_calibration_data(
     regular_chessboard: OpenCVChessboard,
     images: List[Path],
@@ -101,7 +68,7 @@ def prepare_calibration_data(
         (obj_points, img_points)
     """
 
-    objp = regular_chessboard.create_chessboard_points()
+    objp = regular_chessboard.get_object_points(None, None)  # type: ignore
 
     obj_points: List[npt.NDArray[np.float32]] = []
     img_points: List[npt.NDArray[np.float32]] = []
@@ -117,7 +84,7 @@ def prepare_calibration_data(
         img = np.asarray(img, dtype=np.uint8)
 
         # Detect corners
-        ret, corners = detect_chessboard_corners(img, regular_chessboard.partern_size)
+        ret, corners = regular_chessboard.detect_corners(img)
         if ret:
             obj_points.append(objp)
             img_points.append(corners)

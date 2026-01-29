@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 import cv2
@@ -7,29 +7,29 @@ import numpy.typing as npt
 
 
 @dataclass
-class OpenCVBoard(ABC):
-    pass
-
-    def create_chessboard_points(self) -> np.ndarray:
+class OpenCVCornerDetector(ABC):
+    @abstractmethod
+    def detect_corners(
+        self, image: npt.NDArray[np.uint8]
+    ) -> Tuple[bool, Optional[npt.NDArray[np.float32]]]:
         pass
 
-    def detect_chessboard_corners(
-        self, image: np.ndarray
-    ) -> Tuple[bool, Optional[np.ndarray]]:
-        pass
-
-    def get_object_points(self, corners: np.ndarray) -> np.ndarray:
+    @abstractmethod
+    def get_object_points(
+        self, corners: npt.NDArray[np.float32], ids: npt.NDArray[np.int32]
+    ) -> npt.NDArray[np.float32]:
         pass
 
 
 @dataclass
-class OpenCVChessboard:
+class OpenCVChessboard(OpenCVCornerDetector):
     corners_per_row: int
     corners_per_column: int
     square_size: float
 
     def __post_init__(self):
-        self.partern_size = (self.corners_per_row, self.corners_per_column)
+        self.pattern_size = (self.corners_per_row, self.corners_per_column)
+        self.obj_points = self.create_chessboard_points()
 
     def create_chessboard_points(self) -> np.ndarray:
         objp = np.zeros((self.corners_per_row * self.corners_per_column, 3), np.float32)
@@ -39,16 +39,35 @@ class OpenCVChessboard:
         ].T.reshape(-1, 2)  # RIGHT
 
         ## Kept here for reference
+        # object points generation assumes x direction is along columns and y direction is along rows
         # objp[:,:2] = np.mgrid[0:self.corners_per_column, 0:self.corners_per_row].T.reshape(-1,2) # WRONG
 
         return objp
 
-    def detect_chessboard_corners(
-        self, image: np.ndarray
-    ) -> Tuple[bool, Optional[np.ndarray]]:
+    def detect_corners(self, image: np.ndarray) -> Tuple[bool, Optional[np.ndarray]]:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        ret, corners = cv2.findChessboardCorners(gray, self.partern_size, None)
-        return ret, corners
+
+        ret, corners = cv2.findChessboardCorners(
+            gray,
+            self.pattern_size,
+            flags=cv2.CALIB_CB_ADAPTIVE_THRESH
+            + cv2.CALIB_CB_FAST_CHECK
+            + cv2.CALIB_CB_NORMALIZE_IMAGE,
+        )
+
+        if ret:
+            # Refine corner positions
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+            corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            return True, corners
+
+        return False, None
+
+    def get_object_points(
+        self, corners: npt.NDArray[np.float32], ids: npt.NDArray[np.int32]
+    ) -> npt.NDArray[np.float32]:
+        # parameters 'corners' and 'ids' are kept to keep a common interface with CharucoBoard
+        return self.obj_points
 
 
 @dataclass
@@ -75,7 +94,7 @@ class OpenCVCharucoBoard:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = cv2.aruco.detectMarkers(gray, self.aruco_dict)
 
-        if len(corners) < 0:  # No aruco markers detected
+        if len(corners) == 0:  # No aruco markers detected
             print("Error: No aruco markers detected.")
             return False, None, None
 
@@ -89,10 +108,12 @@ class OpenCVCharucoBoard:
             return False, None, None
 
         # For type hints.
-        charuco_corners = np.asarray(charuco_corners, dtype=np.float32)
-        charuco_ids = np.asarray(charuco_ids, dtype=np.int32)
+        charuco_corners_f32: npt.NDArray[np.float32] = np.asarray(
+            charuco_corners, dtype=np.float32
+        )
+        charuco_ids_i32: npt.NDArray[np.int32] = np.asarray(charuco_ids, dtype=np.int32)
 
-        return True, charuco_corners, charuco_ids
+        return True, charuco_corners_f32, charuco_ids_i32
 
     def get_object_points(
         self,
@@ -108,3 +129,11 @@ class OpenCVCharucoBoard:
         img_points = np.asarray(img_points, dtype=np.float32)
 
         return obj_points, img_points
+
+
+if __name__ == "__main__":
+    chessboard = OpenCVChessboard(
+        corners_per_row=7, corners_per_column=10, square_size=0.008
+    )
+
+    print("finish")
