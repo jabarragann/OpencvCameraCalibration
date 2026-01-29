@@ -11,7 +11,9 @@ class OpenCVCornerDetector(ABC):
     @abstractmethod
     def detect_corners(
         self, image: npt.NDArray[np.uint8]
-    ) -> Tuple[bool, Optional[npt.NDArray[np.float32]]]:
+    ) -> Tuple[bool, Optional[npt.NDArray[np.float32]], Optional[npt.NDArray[np.int32]]]:
+        # return bool, corners, corners_ids
+
         pass
 
     @abstractmethod
@@ -44,7 +46,11 @@ class OpenCVChessboard(OpenCVCornerDetector):
 
         return objp
 
-    def detect_corners(self, image: np.ndarray) -> Tuple[bool, Optional[np.ndarray]]:
+    def detect_corners(
+        self, image: npt.NDArray[np.uint8]
+    ) -> Tuple[
+        bool, Optional[npt.NDArray[np.float32]], Optional[npt.NDArray[np.int32]]
+    ]:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         ret, corners = cv2.findChessboardCorners(
@@ -59,9 +65,14 @@ class OpenCVChessboard(OpenCVCornerDetector):
             # Refine corner positions
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
             corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            return True, corners
+            corners_ids = None
 
-        return False, None
+            corners_f32: npt.NDArray[np.float32] = np.asarray(
+                corners, dtype=np.float32
+            )
+            return True, corners_f32, corners_ids 
+
+        return False, None, None
 
     def get_object_points(
         self, corners: npt.NDArray[np.float32], ids: npt.NDArray[np.int32]
@@ -71,7 +82,7 @@ class OpenCVChessboard(OpenCVCornerDetector):
 
 
 @dataclass
-class OpenCVCharucoBoard:
+class OpenCVCharucoBoard(OpenCVCornerDetector):
     squares_in_x_dim: int
     squares_in_y_dim: int
     aruco_dict: Any
@@ -86,12 +97,13 @@ class OpenCVCharucoBoard:
             dictionary=self.aruco_dict,
         )
 
-    def detect_charuco_corners(
-        self, frame: npt.NDArray[np.uint8]
+    # def detect_corners(self, image: np.ndarray) -> Tuple[bool, Optional[np.ndarray]]:
+    def detect_corners(
+        self, image: npt.NDArray[np.uint8]
     ) -> Tuple[
         bool, Optional[npt.NDArray[np.float32]], Optional[npt.NDArray[np.int32]]
     ]:
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = cv2.aruco.detectMarkers(gray, self.aruco_dict)
 
         if len(corners) == 0:  # No aruco markers detected
@@ -117,23 +129,31 @@ class OpenCVCharucoBoard:
 
     def get_object_points(
         self,
-        charuco_corners: npt.NDArray[np.float32],
-        charuco_ids: npt.NDArray[np.int32],
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+        corners: npt.NDArray[np.float32],
+        corners_ids: npt.NDArray[np.int32],
+    ) -> npt.NDArray[np.float32]:
+
         obj_points, img_points = self.board.matchImagePoints(
-            charuco_corners,  # type: ignore
-            charuco_ids,
+            corners,  # type: ignore
+            corners_ids,
         )
 
         obj_points = np.asarray(obj_points, dtype=np.float32)
-        img_points = np.asarray(img_points, dtype=np.float32)
+        # img_points = np.asarray(img_points, dtype=np.float32)
 
-        return obj_points, img_points
+        return obj_points
 
 
 if __name__ == "__main__":
     chessboard = OpenCVChessboard(
         corners_per_row=7, corners_per_column=10, square_size=0.008
+    )
+    charuco_board = OpenCVCharucoBoard(
+        squares_in_x_dim=7,
+        squares_in_y_dim=10,
+        aruco_dict=cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250),
+        square_length=0.008,
+        marker_length=0.0048,
     )
 
     print("finish")

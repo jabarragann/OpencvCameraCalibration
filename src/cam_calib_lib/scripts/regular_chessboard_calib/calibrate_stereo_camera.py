@@ -100,8 +100,8 @@ def prepare_calibration_data(
         right_img = np.asarray(right_img, dtype=np.uint8)
 
         # Detect corners in both images
-        left_ret, left_corners = regular_chessboard.detect_corners(left_img)
-        right_ret, right_corners = regular_chessboard.detect_corners(right_img)
+        left_ret, left_corners, _ = regular_chessboard.detect_corners(left_img)
+        right_ret, right_corners, _= regular_chessboard.detect_corners(right_img)
 
         # if left_ret:
         #     img = left_img.copy()

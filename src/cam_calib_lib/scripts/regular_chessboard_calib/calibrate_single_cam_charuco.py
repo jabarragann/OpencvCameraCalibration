@@ -55,14 +55,16 @@ def prepare_calibration_data(
         img = np.asarray(img, dtype=np.uint8)
 
         # Detect corners
-        ret, charuco_corners, charuco_ids = chessboard.detect_charuco_corners(img)
+        ret, charuco_corners, charuco_ids = chessboard.detect_corners(img)
 
         failure = charuco_corners is None or charuco_ids is None or not ret
 
         if not failure:
-            obj_points_i, img_points_i = chessboard.get_object_points(
+            obj_points_i = chessboard.get_object_points(
                 charuco_corners, charuco_ids
             )
+            img_points_i = charuco_corners
+
             obj_points.append(obj_points_i)
             img_points.append(img_points_i)
 
