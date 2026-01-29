@@ -29,15 +29,22 @@ class CharucoBoard:
         bool, Optional[npt.NDArray[np.float32]], Optional[npt.NDArray[np.int32]]
     ]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        corners, ids, _ = cv2.aruco.detectMarkers(gray, self.aruco_dict)
 
-        if len(corners) < 0:  # No aruco markers detected
+        ## Step 1: ArUco markers detection.
+        ## marker_corners --> tuple[npt.NDArray[np.float32]]
+        ## ids --> npt.NDArray[np.int32] --> [N,]
+        ## Four corners are detected for each marker. Each marker has an unique id. 
+        marker_corners, ids, _ = cv2.aruco.detectMarkers(gray, self.aruco_dict)
+
+        if len(marker_corners) < 0:  # No aruco markers detected
             print("Error: No aruco markers detected.")
             return False, None, None
 
-        # Interpolate Charuco corners
+        ## Step 2: Identify Charuco board corners.
+        ## charuco_corners --> npt.NDArray[np.float32] --> [N,1,2]
+        ## charuco_ids --> npt.NDArray[np.int32] --> [N, 1]
         retval, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
-            markerCorners=corners, markerIds=ids, image=gray, board=self.board
+            markerCorners=marker_corners, markerIds=ids, image=gray, board=self.board
         )
 
         if retval < 3:  # minimum number of charuco corners
@@ -54,16 +61,20 @@ class CharucoBoard:
         self,
         charuco_corners: npt.NDArray[np.float32],
         charuco_ids: npt.NDArray[np.int32],
-    ) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    ) -> npt.NDArray[np.float32]:
+
         obj_points, img_points = self.board.matchImagePoints(
             charuco_corners,  # type: ignore
             charuco_ids,
         )
 
         obj_points = np.asarray(obj_points, dtype=np.float32)
-        img_points = np.asarray(img_points, dtype=np.float32)
 
-        return obj_points, img_points
+        ## Image points are the same charuco corners.
+        assert np.all(np.isclose(charuco_corners, img_points)), "Charuco corners and image points are not the same."
+        # img_points = np.asarray(img_points, dtype=np.float32)
+
+        return obj_points
 
 
 def show_image(img):
@@ -146,9 +157,10 @@ if __name__ == "__main__":
     ):  # Needed or type hint will complain.
         exit("Error: No Charuco corners detected.")
 
-    obj_points, img_points = charuco_board_7x10.get_object_points(
+    obj_points= charuco_board_7x10.get_object_points(
         charuco_corners, charuco_ids
     )
+    img_points = charuco_corners
 
     cv2.aruco.drawDetectedCornersCharuco(frame, charuco_corners, charuco_ids)  # type: ignore[no-untyped-call]
 
