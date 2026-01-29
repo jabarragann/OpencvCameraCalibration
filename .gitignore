@@ -2,4 +2,5 @@
 output
 __pycache__
 *.egg-info_
+.cursor/
 temp/

@@ -206,6 +206,7 @@ def perform_stereo_calibration(
     )
 
     # Stereo calibration
+    stereo_calibration_flags = cv2.CALIB_FIX_INTRINSIC
     print("Performing stereo calibration...")
     (
         ret,
@@ -226,7 +227,7 @@ def perform_stereo_calibration(
         right_camera_matrix,
         right_dist_coeffs,
         image_size,
-        flags=flags,
+        flags=stereo_calibration_flags,
         criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
     )
 
