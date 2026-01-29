@@ -41,12 +41,12 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
     for file in all_files:
         filename = file.name
         if filename.startswith("left"):
-            match = re.search(r"left-(\d+)\.png", filename)
+            match = re.search(r"left[_-](\d+)\.png", filename)
             if match:
                 frame_num = int(match.group(1))
                 left_dict[frame_num] = file
         elif filename.startswith("right"):
-            match = re.search(r"right-(\d+)\.png", filename)
+            match = re.search(r"right[_-](\d+)\.png", filename)
             if match:
                 frame_num = int(match.group(1))
                 right_dict[frame_num] = file
@@ -223,6 +223,7 @@ def compute_rectification_maps(
     image_size: Tuple[int, int],
     R: npt.NDArray[np.float32],
     T: npt.NDArray[np.float32],
+    alpha: float = 0.6,
 ) -> Tuple[
     npt.NDArray[np.float32],
     npt.NDArray[np.float32],
@@ -248,7 +249,7 @@ def compute_rectification_maps(
         R,
         T,
         flags=cv2.CALIB_ZERO_DISPARITY,
-        alpha=0.6,  # 0=valid pixels only, 1=all pixels, 0.9=good balance
+        alpha=alpha,  # 0=valid pixels only, 1=all pixels
     )
 
     # Compute rectification maps
