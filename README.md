@@ -2,6 +2,8 @@
 
 Simple scripts and documentation to calibrate cameras with Opencv.
 
+Tested with Opencv 4.11.0.86 and Python 3.12.
+
 ## Install package
 ```
 pip install -e .
