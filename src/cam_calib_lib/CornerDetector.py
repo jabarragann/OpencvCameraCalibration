@@ -1,7 +1,6 @@
 ## Camera calibration with a Charuco board with Opencv 4.9.0
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Optional, Tuple
 import numpy as np
 import numpy.typing as npt
@@ -116,6 +115,8 @@ def detect_charuco_corners(frame, board):
 
 
 if __name__ == "__main__":
+    from pyprojroot.here import here
+
     # Board parameters
     SQUARE_LENGTH = 0.0080  # in meters
     MARKER_LENGTH = 0.0048  # in meters
@@ -131,10 +132,10 @@ if __name__ == "__main__":
         marker_lenght=MARKER_LENGTH,
     )
 
-    img_path = Path(__file__).parent / "../../assets/sample_data/frame_7x10.png"
+    img_path = here() / "assets/sample_data_charuco/frame_7x10.png"
+    assert img_path.exists(), f"Image not found in {img_path}. Please check the path."
+
     frame = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
-    if frame is None:
-        raise FileNotFoundError("Image not found. Please check the path.")
 
     frame = np.asarray(frame, dtype=np.uint8)
 
