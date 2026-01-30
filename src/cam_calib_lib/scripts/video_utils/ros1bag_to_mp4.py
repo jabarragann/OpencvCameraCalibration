@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from dataclasses import dataclass
+from pathlib import Path
 import rospy
 import subprocess
 import os
@@ -10,7 +12,13 @@ from cv_bridge import CvBridge
 import cv2
 
 import message_filters
+from tap import Tap
 
+class SimpleArgumentParser(Tap):
+    bag_path: str = "output/microscope_calibration/calib4-01302025/calibration_data03.bag"
+    left_topic: str = "/decklink_left/camera/image_raw"
+    right_topic: str = "/decklink_right/camera/image_raw"
+    output_dir: Path = "output/microscope_calibration/calib4-01302025/images"
 
 class StereoBagExtractor:
     def __init__(
@@ -20,7 +28,7 @@ class StereoBagExtractor:
         right_topic,
         output_dir,
         queue_size=10,
-        slop=0.02,
+        slop=0.05,
     ):
         self.bag_path = bag_path
         self.bridge = CvBridge()
@@ -73,21 +81,25 @@ def play_rosbag(bag_path):
 
 
 def main():
+
+
+    args = SimpleArgumentParser().parse_args()
     rospy.init_node("stereo_bag_extractor", anonymous=True)
 
-    bag_path = rospy.get_param("~bag_path")
-    left_topic = rospy.get_param("~left_topic", "/left/image_raw")
-    right_topic = rospy.get_param("~right_topic", "/right/image_raw")
-    output_dir = rospy.get_param("~output_dir", "./stereo_images")
+    # args = CliArgs().parse_args()
+    # bag_path = rospy.get_param("~bag_path", "output/microscope_calibration/calib4-01302025/calibration_data03.bag")
+    # left_topic = rospy.get_param("~left_topic", "/left/image_raw")
+    # right_topic = rospy.get_param("~right_topic", "/right/image_raw")
+    # output_dir = rospy.get_param("~output_dir", "output/microscope_calibration/calib4-01302025/images")
 
     extractor = StereoBagExtractor(
-        bag_path=bag_path,
-        left_topic=left_topic,
-        right_topic=right_topic,
-        output_dir=output_dir,
+        bag_path=args.bag_path,
+        left_topic=args.left_topic,
+        right_topic=args.right_topic,
+        output_dir=args.output_dir,
     )
 
-    bag_process = play_rosbag(bag_path)
+    bag_process = play_rosbag(args.bag_path)
 
     rospy.loginfo("Playing rosbag...")
     rospy.spin()
