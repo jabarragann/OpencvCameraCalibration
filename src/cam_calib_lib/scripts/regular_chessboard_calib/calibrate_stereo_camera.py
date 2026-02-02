@@ -79,8 +79,7 @@ def prepare_calibration_data(
         (obj_points, left_img_points, right_img_points, valid_pairs)
     """
 
-    objp = regular_chessboard.get_object_points(corners=None, ids=None) # type: ignore
-    
+    objp = regular_chessboard.get_object_points(corners=None, ids=None)  # type: ignore
 
     obj_points: List[npt.NDArray[np.float32]] = []
     left_img_points: List[npt.NDArray[np.float32]] = []
@@ -101,7 +100,7 @@ def prepare_calibration_data(
 
         # Detect corners in both images
         left_ret, left_corners, _ = regular_chessboard.detect_corners(left_img)
-        right_ret, right_corners, _= regular_chessboard.detect_corners(right_img)
+        right_ret, right_corners, _ = regular_chessboard.detect_corners(right_img)
 
         # if left_ret:
         #     img = left_img.copy()
@@ -130,6 +129,61 @@ def prepare_calibration_data(
     )
     return obj_points, left_img_points, right_img_points, valid_pairs
 
+import numpy as np
+import cv2
+
+
+def epipolar_error_px(
+    pts_left: list[npt.NDArray[np.float32]],
+    pts_right: list[npt.NDArray[np.float32]],
+    F: np.ndarray,
+):
+    """
+    Compute epipolar point-to-line distances (in pixels).
+
+    Parameters
+    ----------
+    pts_left : (N, 2) array
+        Matched points in the left image (pixel coordinates).
+    pts_right : (N, 2) array
+        Corresponding matched points in the right image.
+    F : (3, 3) array
+        Fundamental matrix (left -> right).
+
+    Returns
+    -------
+    errors : (N,) array
+        Point-to-epipolar-line distances in pixels.
+    stats : dict
+        Mean, median, 95th percentile, max.
+    """
+
+    pts_left_concat = np.concatenate(pts_left, axis=0)
+    pts_right_concat = np.concatenate(pts_right, axis=0)
+    assert pts_left_concat.shape == pts_right_concat.shape
+    assert pts_left_concat.shape[2] == 2
+
+    # Convert to homogeneous coordinates
+    pts_l = cv2.convertPointsToHomogeneous(pts_left_concat).squeeze()
+    pts_r = cv2.convertPointsToHomogeneous(pts_right_concat).squeeze()
+
+    # Epipolar lines in right image: l_r = F * x_l
+    lines_r = (F @ pts_l.T).T  # (N, 3)
+
+    # Distance from right points to their epipolar lines
+    num = np.abs(np.sum(lines_r * pts_r, axis=1))
+    den = np.sqrt(lines_r[:, 0]**2 + lines_r[:, 1]**2)
+
+    errors = num / den
+
+    stats = {
+        "mean_px": float(np.mean(errors)),
+        "median_px": float(np.median(errors)),
+        "p95_px": float(np.percentile(errors, 95)),
+        "max_px": float(np.max(errors)),
+    }
+
+    return errors, stats
 
 def perform_stereo_calibration(
     obj_points: List[npt.NDArray[np.float32]],
@@ -160,12 +214,12 @@ def perform_stereo_calibration(
     # First calibrate individual cameras
     flags = None
     print("Calibrating left camera...")
-    _, left_camera_matrix, left_dist_coeffs, _, _ = cv2.calibrateCamera(
+    ret_left, left_camera_matrix, left_dist_coeffs, _, _ = cv2.calibrateCamera(
         obj_points, left_img_points, image_size, None, None, flags=flags
     )
 
     print("Calibrating right camera...")
-    _, right_camera_matrix, right_dist_coeffs, _, _ = cv2.calibrateCamera(
+    ret_right, right_camera_matrix, right_dist_coeffs, _, _ = cv2.calibrateCamera(
         obj_points, right_img_points, image_size, None, None, flags=flags
     )
 
@@ -173,7 +227,7 @@ def perform_stereo_calibration(
     stereo_calibration_flags = cv2.CALIB_FIX_INTRINSIC
     print("Performing stereo calibration...")
     (
-        ret,
+        ret_stereo,
         left_camera_matrix,
         left_dist_coeffs,
         right_camera_matrix,
@@ -195,8 +249,15 @@ def perform_stereo_calibration(
         criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
     )
 
+    errors_stereo, stats_stereo = epipolar_error_px(left_img_points, right_img_points, F)
+    print(f"Epipolar error stereo: {stats_stereo['mean_px']:.4f} pixels")
+    print(f"Epipolar error 95th percentile: {stats_stereo['p95_px']:.4f} pixels")
+
     print("\nStereo calibration completed!")
-    print(f"Reprojection error: {ret:.4f} pixels")
+    print(f"Reprojection error left camera: {ret_left:.4f} pixels")
+    print(f"Reprojection error right camera: {ret_right:.4f} pixels")
+    print(f"Reprojection error stereo: {ret_stereo:.4f} pixels")
+
     print(f"\nLeft camera matrix:\n{left_camera_matrix}")
     print(f"\nRight camera matrix:\n{right_camera_matrix}")
     print(f"\nRotation matrix:\n{R}")
@@ -211,7 +272,7 @@ def perform_stereo_calibration(
         T,
         E,
         F,
-        ret,
+        ret_stereo,
     )
 
 
@@ -223,7 +284,7 @@ def compute_rectification_maps(
     image_size: Tuple[int, int],
     R: npt.NDArray[np.float32],
     T: npt.NDArray[np.float32],
-    alpha: float = 0.6,
+    alpha: float = 1.0,
 ) -> Tuple[
     npt.NDArray[np.float32],
     npt.NDArray[np.float32],
@@ -313,16 +374,25 @@ def rectify_and_display(
 def display_undistorted_images(
     left_img,
     right_img,
-    left_camera_matrix,
-    left_dist_coeffs,
-    right_camera_matrix,
-    right_dist_coeffs,
+    left_mtx,
+    left_dist,
+    right_mtx,
+    right_dist,
 ):
     """
     Display the undistorted left and right images using their respective intrinsics.
     """
-    left_undistorted = cv2.undistort(left_img, left_camera_matrix, left_dist_coeffs)
-    right_undistorted = cv2.undistort(right_img, right_camera_matrix, right_dist_coeffs)
+
+    w, h = left_img.shape[:2]
+    left_new_mtx, left_roi = cv2.getOptimalNewCameraMatrix(
+        left_mtx, left_dist, (w, h), 1.0, (w, h)
+    )
+    right_new_mtx, right_roi = cv2.getOptimalNewCameraMatrix(
+        right_mtx, right_dist, (w, h), 1.0, (w, h)
+    )
+
+    left_undistorted = cv2.undistort(left_img, left_mtx, left_dist, None, left_new_mtx)
+    right_undistorted = cv2.undistort(right_img, right_mtx, right_dist, None, right_new_mtx)
     # left_undistorted = left_img.copy()
     # right_undistorted = right_img.copy()
 
