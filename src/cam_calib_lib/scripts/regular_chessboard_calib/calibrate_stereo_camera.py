@@ -12,6 +12,7 @@ import numpy.typing as npt
 from tap import Tap
 
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
+from cam_calib_lib.Utils import save_calibration_yaml_stereo_cam, save_calibration_yaml_stereo_cam_additional
 
 
 class CliArgs(Tap):
@@ -129,6 +130,7 @@ def prepare_calibration_data(
     )
     return obj_points, left_img_points, right_img_points, valid_pairs
 
+
 import numpy as np
 import cv2
 
@@ -172,7 +174,7 @@ def epipolar_error_px(
 
     # Distance from right points to their epipolar lines
     num = np.abs(np.sum(lines_r * pts_r, axis=1))
-    den = np.sqrt(lines_r[:, 0]**2 + lines_r[:, 1]**2)
+    den = np.sqrt(lines_r[:, 0] ** 2 + lines_r[:, 1] ** 2)
 
     errors = num / den
 
@@ -184,6 +186,7 @@ def epipolar_error_px(
     }
 
     return errors, stats
+
 
 def perform_stereo_calibration(
     obj_points: List[npt.NDArray[np.float32]],
@@ -249,7 +252,9 @@ def perform_stereo_calibration(
         criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
     )
 
-    errors_stereo, stats_stereo = epipolar_error_px(left_img_points, right_img_points, F)
+    errors_stereo, stats_stereo = epipolar_error_px(
+        left_img_points, right_img_points, F
+    )
     print(f"Epipolar error stereo: {stats_stereo['mean_px']:.4f} pixels")
     print(f"Epipolar error 95th percentile: {stats_stereo['p95_px']:.4f} pixels")
 
@@ -276,7 +281,7 @@ def perform_stereo_calibration(
     )
 
 
-def compute_rectification_maps(
+def compute_rectification_matrices(
     left_camera_matrix: npt.NDArray[np.float32],
     left_dist_coeffs: npt.NDArray[np.float32],
     right_camera_matrix: npt.NDArray[np.float32],
@@ -285,23 +290,8 @@ def compute_rectification_maps(
     R: npt.NDArray[np.float32],
     T: npt.NDArray[np.float32],
     alpha: float = 1.0,
-) -> Tuple[
-    npt.NDArray[np.float32],
-    npt.NDArray[np.float32],
-    npt.NDArray[np.float32],
-    npt.NDArray[np.float32],
-    npt.NDArray[np.float32],
-    npt.NDArray[np.float32],
-]:
-    """
-    Compute rectification maps for stereo images.
-
-    Returns:
-        (left_map1, left_map2, right_map1, right_map2, left_roi, right_roi)
-    """
-    print("\nComputing rectification maps...")
-
-    R1, R2, P1, P2, Q, left_roi, right_roi = cv2.stereoRectify(
+):
+    R_left, R_right, P_left, P_right, Q, left_roi, right_roi = cv2.stereoRectify(
         left_camera_matrix,
         left_dist_coeffs,
         right_camera_matrix,
@@ -313,16 +303,40 @@ def compute_rectification_maps(
         alpha=alpha,  # 0=valid pixels only, 1=all pixels
     )
 
+    return R_left, R_right, P_left, P_right, Q, left_roi, right_roi
+
+
+def compute_rectification_maps(
+    R1: npt.NDArray[np.float32],
+    R2: npt.NDArray[np.float32],
+    P1: npt.NDArray[np.float32],
+    P2: npt.NDArray[np.float32],
+    image_size: Tuple[int, int],
+    left_mtx: npt.NDArray[np.float32],
+    left_dist: npt.NDArray[np.float32],
+    right_mtx: npt.NDArray[np.float32],
+    right_dist: npt.NDArray[np.float32],
+) -> Tuple[
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+]:
+    """
+    Compute rectification maps for stereo images.
+
+    Returns:
+        (left_map1, left_map2, right_map1, right_map2, left_roi, right_roi)
+    """
+    print("\nComputing rectification maps...")
+
     # Compute rectification maps
     left_map1, left_map2 = cv2.initUndistortRectifyMap(
-        left_camera_matrix, left_dist_coeffs, R1, P1, image_size, cv2.CV_16SC2
+        left_mtx, left_dist, R1, P1, image_size, cv2.CV_16SC2
     )
     right_map1, right_map2 = cv2.initUndistortRectifyMap(
-        right_camera_matrix, right_dist_coeffs, R2, P2, image_size, cv2.CV_16SC2
+        right_mtx, right_dist, R2, P2, image_size, cv2.CV_16SC2
     )
 
-    print("Rectification maps computed!")
-    return left_map1, left_map2, right_map1, right_map2, left_roi, right_roi
+    return left_map1, left_map2, right_map1, right_map2
 
 
 def rectify_and_display(
@@ -392,7 +406,9 @@ def display_undistorted_images(
     )
 
     left_undistorted = cv2.undistort(left_img, left_mtx, left_dist, None, left_new_mtx)
-    right_undistorted = cv2.undistort(right_img, right_mtx, right_dist, None, right_new_mtx)
+    right_undistorted = cv2.undistort(
+        right_img, right_mtx, right_dist, None, right_new_mtx
+    )
     # left_undistorted = left_img.copy()
     # right_undistorted = right_img.copy()
 
@@ -497,9 +513,9 @@ def main(args: CliArgs):
         obj_points, left_img_points, right_img_points, image_size, args.flags
     )
 
-    # Compute rectification maps
-    left_map1, left_map2, right_map1, right_map2, left_roi, right_roi = (
-        compute_rectification_maps(
+    # Compute rectification matrices
+    R_left, R_right, P_left, P_right, _, left_roi, right_roi = (
+        compute_rectification_matrices(
             left_camera_matrix,
             left_dist_coeffs,
             right_camera_matrix,
@@ -510,18 +526,31 @@ def main(args: CliArgs):
         )
     )
 
-    # Save rectification maps
-    args.output_path.mkdir(parents=True, exist_ok=True)
-    np.save(str(args.output_path / "left_map1.npy"), left_map1)
-    np.save(str(args.output_path / "left_map2.npy"), left_map2)
-    np.save(str(args.output_path / "right_map1.npy"), right_map1)
-    np.save(str(args.output_path / "right_map2.npy"), right_map2)
-    np.save(str(args.output_path / "left_roi.npy"), left_roi)
-    np.save(str(args.output_path / "right_roi.npy"), right_roi)
+    # Compute rectification maps
+    left_map1, left_map2, right_map1, right_map2 = compute_rectification_maps(
+        R_left,
+        R_right,
+        P_left,
+        P_right,
+        image_size,
+        left_camera_matrix,
+        left_dist_coeffs,
+        right_camera_matrix,
+        right_dist_coeffs,
+    )
+
+    # # Save rectification maps
+    # args.output_path.mkdir(parents=True, exist_ok=True)
+    # np.save(str(args.output_path / "left_map1.npy"), left_map1)
+    # np.save(str(args.output_path / "left_map2.npy"), left_map2)
+    # np.save(str(args.output_path / "right_map1.npy"), right_map1)
+    # np.save(str(args.output_path / "right_map2.npy"), right_map2)
+    # np.save(str(args.output_path / "left_roi.npy"), left_roi)
+    # np.save(str(args.output_path / "right_roi.npy"), right_roi)
 
     # Save calibration results
     save_calibration_results(
-        args.output_path,
+        args.output_path / "raw_results",
         left_camera_matrix,
         left_dist_coeffs,
         right_camera_matrix,
@@ -532,6 +561,34 @@ def main(args: CliArgs):
         F,
         image_size,
         reprojection_error,
+    )
+
+    ## Save into yaml files
+    save_calibration_yaml_stereo_cam(
+        filename=str(args.output_path / "left.yaml"),
+        image_size=image_size,
+        mtx=left_camera_matrix,
+        dist=left_dist_coeffs,
+        camera_name="left",
+        rect_mtx=R_left,
+        proj_mtx=P_left,
+    )
+    save_calibration_yaml_stereo_cam(
+        filename=str(args.output_path / "right.yaml"),
+        image_size=image_size,
+        mtx=right_camera_matrix,
+        dist=right_dist_coeffs,
+        camera_name="right",
+        rect_mtx=R_right,
+        proj_mtx=P_right,
+    )
+    save_calibration_yaml_stereo_cam_additional(
+        filename=str(args.output_path / "additional.yaml"),
+        image_size=image_size,
+        F=F,
+        E=E,
+        T=T,
+        R=R,
     )
 
     # Test rectification on first pair

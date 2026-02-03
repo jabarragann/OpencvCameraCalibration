@@ -39,6 +39,7 @@ def load_camera_calib(filename: Path):
         # "projection_matrix": projection_matrix,
     }
 
+
 def format_array(arr, per_row=3):
     values = arr.flatten(order="C")
     lines = []
@@ -63,7 +64,7 @@ def format_array(arr, per_row=3):
 
             formatted.append(s)
         line = ", ".join(formatted)
-        line += "," # to the last element 
+        line += ","  # to the last element
         lines.append(line)
 
     return lines
@@ -82,13 +83,13 @@ def modify_string_for_yaml(formated_arry: list[str]):
     results = []
     results.append(first_line_text + formated_arry[0])
     results.append(other_line_text + formated_arry[1])
-    # remove the last comma from the last line 
+    # remove the last comma from the last line
     results.append(other_line_text + formated_arry[2][:-1] + last_line_text_end)
 
     return "\n".join(results)
 
 
-def create_yaml_string(
+def create_yaml_str_single_cam(
     image_size: tuple[int, int], mtx: np.ndarray, dist: np.ndarray, camera_name: str
 ):
     mtx_str_data = modify_string_for_yaml(format_array(mtx))
@@ -108,7 +109,72 @@ distortion_coefficients:
 """
 
 
-def save_calibration_yaml(
+def create_yaml_str_stereo_cam(
+    image_size: tuple[int, int],
+    mtx: np.ndarray,
+    dist: np.ndarray,
+    camera_name: str,
+    rect_mtx: np.ndarray,
+    proj_mtx: np.ndarray,
+):
+    mtx_str_data = modify_string_for_yaml(format_array(mtx))
+    rect_mtx_str_data = modify_string_for_yaml(format_array(rect_mtx))
+    proj_mtx_str_data = modify_string_for_yaml(format_array(proj_mtx, per_row=4))
+
+    return f"""image_width: {image_size[0]}
+image_height: {image_size[1]}
+camera_name: {camera_name}
+camera_matrix:
+  rows: 3
+  cols: 3
+{mtx_str_data}
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: {dist.size}
+  data: [{", ".join(f"{v:.6f}" for v in dist.flatten())}]
+rectification_matrix:
+  rows: 3
+  cols: 3
+{rect_mtx_str_data}
+projection_matrix:
+  rows: 3
+  cols: 4
+{proj_mtx_str_data}
+"""
+
+def create_yaml_str_stereo_cam_additional(
+    image_size: tuple[int, int],
+    F: np.ndarray,
+    E: np.ndarray,
+    T: np.ndarray,
+    R: np.ndarray):
+
+    F_str_data = modify_string_for_yaml(format_array(F))
+    E_str_data = modify_string_for_yaml(format_array(E))
+    R_str_data = modify_string_for_yaml(format_array(R))
+
+    return f"""image_width: {image_size[0]}
+image_height: {image_size[1]}
+Fundamental:
+  rows: 3
+  cols: 3
+{F_str_data}
+Essential:
+  rows: 3
+  cols: 3
+{E_str_data}
+T:
+  rows: 1
+  cols: {T.shape[0]}
+  data: [{", ".join(f"{v:.6f}" for v in T.flatten())}]
+R:
+  rows: 3
+  cols: 3
+{R_str_data}
+"""
+
+def save_calibration_yaml_single_cam(
     filename: str,
     image_size: tuple[int, int],
     mtx: np.ndarray,
@@ -116,9 +182,33 @@ def save_calibration_yaml(
     camera_name: str,
 ):
     with open(filename, "w") as f:
-        yaml_string = create_yaml_string(image_size, mtx, dist, camera_name)
+        yaml_string = create_yaml_str_single_cam(image_size, mtx, dist, camera_name)
         f.write(yaml_string)
 
+def save_calibration_yaml_stereo_cam(
+    filename: str,
+    image_size: tuple[int, int],
+    mtx: np.ndarray,
+    dist: np.ndarray,
+    camera_name: str,
+    rect_mtx: np.ndarray,
+    proj_mtx: np.ndarray,
+):
+    with open(filename, "w") as f:
+        yaml_string = create_yaml_str_stereo_cam(image_size, mtx, dist, camera_name, rect_mtx, proj_mtx)
+        f.write(yaml_string)
+
+def save_calibration_yaml_stereo_cam_additional(
+    filename: str,
+    image_size: tuple,
+    F: np.ndarray,
+    E: np.ndarray,
+    T: np.ndarray,
+    R: np.ndarray,
+):
+    with open(filename, "w") as f:
+        yaml_string = create_yaml_str_stereo_cam_additional(image_size, F, E, T, R)
+        f.write(yaml_string)
 
 if __name__ == "__main__":
     mtx = np.array(
@@ -135,6 +225,6 @@ if __name__ == "__main__":
     print("modify_string_for_yaml")
     print(modify_string_for_yaml(format_array(mtx)))
     print("create_yaml_string")
-    print(create_yaml_string((1920, 1080), mtx, dist, "test"))
+    print(create_yaml_str_single_cam((1920, 1080), mtx, dist, "test"))
 
     print(format_array(mtx))

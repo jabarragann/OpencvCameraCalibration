@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from cam_calib_lib.CornerDetector import CharucoBoard
-from cam_calib_lib.Utils import save_calibration_yaml
+from cam_calib_lib.Utils import save_calibration_yaml_single_cam
 from pyprojroot.here import here
 
 
@@ -150,7 +150,7 @@ def main():
     # print(f"Rotation Vectors:\n{rvecs}")
     # print(f"Translation Vectors:\n{tvecs}")
 
-    save_calibration_yaml(
+    save_calibration_yaml_single_cam(
         filename=str(img_path / "camera_calibration.yaml"),
         image_size=image_size,
         mtx=mtx,

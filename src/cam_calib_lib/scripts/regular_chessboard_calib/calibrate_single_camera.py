@@ -5,14 +5,14 @@ Performs calibration for either left or right camera.
 
 import re
 from pathlib import Path
-from typing import List, Tuple 
+from typing import List, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
 
 from cam_calib_lib.ArgumentParsers import CameraCalibrationArgs
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
-from cam_calib_lib.Utils import save_calibration_yaml
+from cam_calib_lib.Utils import save_calibration_yaml_single_cam
 
 
 class CliArgs(CameraCalibrationArgs):
@@ -345,7 +345,7 @@ def save_calibration_results(
     """Save calibration results to numpy files in the same format as stereo calibration."""
     output_path.mkdir(parents=True, exist_ok=True)
 
-    save_calibration_yaml(
+    save_calibration_yaml_single_cam(
         filename=str(output_path / f"{camera}_calibration.yaml"),
         image_size=image_size,
         mtx=camera_matrix,
