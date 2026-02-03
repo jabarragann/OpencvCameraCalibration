@@ -10,6 +10,7 @@ class MyContext:
     input_video: Path
     output_dir: Path
     target_fps: int = -1
+    stem: str = "frame"
 
 
 def video_to_frames(ctx: MyContext, max_res: int = 0):
@@ -36,7 +37,7 @@ def video_to_frames(ctx: MyContext, max_res: int = 0):
     while cap.isOpened():
         ret, frame = cap.read()
 
-        if not ret: # If no frame is returned exit.
+        if not ret:  # If no frame is returned exit.
             break
 
         if frame_count % stride == 0:
@@ -44,10 +45,9 @@ def video_to_frames(ctx: MyContext, max_res: int = 0):
                 frame = cv2.resize(frame, (width, height))  # Resize frame
 
             cv2.imwrite(
-                str(ctx.output_dir / f"frame_{frame_count:06d}.png"),
+                str(ctx.output_dir / f"{ctx.stem}_{frame_count:06d}.png"),
                 frame,
             )
-
 
         frame_count += 1
         # print("debug frame_count", frame_count)
@@ -60,13 +60,20 @@ def video_to_frames(ctx: MyContext, max_res: int = 0):
 @click.option("--input-video", type=click.Path(), required=True)
 @click.option("--output-dir", type=click.Path())
 @click.option("--target-fps", type=int, default=-1, help="Target frames per second.")
+@click.option("--stem", type=str, default="frame", help="Stem for the output frames.")
 @click.pass_context
-def cli(ctx: click.Context, input_video: str, output_dir: str, target_fps: int):
-
+def cli(
+    ctx: click.Context, input_video: str, output_dir: str, target_fps: int, stem: str
+):
     if output_dir is None:
         output_dir = Path(input_video).parent / "frames"
 
-    ctx.obj = MyContext(input_video=Path(input_video), output_dir=Path(output_dir), target_fps=target_fps)
+    ctx.obj = MyContext(
+        input_video=Path(input_video),
+        output_dir=Path(output_dir),
+        target_fps=target_fps,
+        stem=stem,
+    )
 
 
 # Step 3: Subcommand that uses the context with type hints
@@ -86,6 +93,7 @@ def run(ctx: MyContext):
         ctx.output_dir.mkdir(exist_ok=True, parents=True)
 
     video_to_frames(ctx)
+
 
 @cli.command()
 @click.pass_obj
