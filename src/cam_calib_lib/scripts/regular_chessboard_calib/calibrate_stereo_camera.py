@@ -131,10 +131,6 @@ def prepare_calibration_data(
     return obj_points, left_img_points, right_img_points, valid_pairs
 
 
-import numpy as np
-import cv2
-
-
 def epipolar_error_px(
     pts_left: list[npt.NDArray[np.float32]],
     pts_right: list[npt.NDArray[np.float32]],
