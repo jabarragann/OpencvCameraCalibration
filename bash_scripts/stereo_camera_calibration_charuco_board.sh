@@ -15,7 +15,8 @@ python -m cam_calib_lib.scripts.regular_chessboard_calib.calibrate_stereo_camera
     --square_size 0.0050 \
     --marker_size 0.0030 \
     --output_path output/mock_or_microscope_collection1/collection5_02022026/calib_results_$camera_name \
-    --print_debug 
+    --print_debug \
+    --save_debug_images
 
 # python -m cam_calib_lib.scripts.regular_chessboard_calib.calibrate_stereo_camera_charuco  \
 #     --images_path output/mock_or_microscope_collection1/collection4/frames_5fps \

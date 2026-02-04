@@ -16,6 +16,7 @@ import numpy.typing as npt
 
 class CliArgs(CameraCalibrationCharucoArgs):
     print_debug: bool = False
+    save_debug_images: bool = False
 
 
 def prepare_stereo_charuco_data(
@@ -23,10 +24,11 @@ def prepare_stereo_charuco_data(
     left_images: list[Path],
     right_images: list[Path],
 ) -> tuple[
-    list[npt.NDArray[np.float32]],
-    list[npt.NDArray[np.float32]],
-    list[npt.NDArray[np.float32]],
-    list[npt.NDArray[np.float32]],
+    list[npt.NDArray[np.float32]],  # obj_points
+    list[npt.NDArray[np.float32]],  # left_img_points
+    list[npt.NDArray[np.float32]],  # right_img_points
+    list[npt.NDArray[np.uint8]],  # left_valid_images
+    list[npt.NDArray[np.uint8]],  # right_valid_images
 ]:
     """
     Prepare object points and image points for stereo calibration.
@@ -38,7 +40,8 @@ def prepare_stereo_charuco_data(
     obj_points: list[npt.NDArray[np.float32]] = []
     left_img_points: list[npt.NDArray[np.float32]] = []
     right_img_points: list[npt.NDArray[np.float32]] = []
-    valid_pairs: list[tuple[int, int]] = []
+    left_valid_images: list[npt.NDArray[np.uint8]] = []
+    right_valid_images: list[npt.NDArray[np.uint8]] = []
 
     print("Detecting chessboard corners...")
     for idx, (left_path, right_path) in enumerate(zip(left_images, right_images)):
@@ -89,22 +92,98 @@ def prepare_stereo_charuco_data(
                 obj_points.append(objp_left)
                 left_img_points.append(left_corners_filtered)
                 right_img_points.append(right_corners_filtered)
+                left_valid_images.append(left_img)
+                right_valid_images.append(right_img)
 
                 valid_corners_in_image = right_corners_filtered.shape[0]
 
-        if valid_corners_in_image > 10:
+        minimum_corners_required = 20
+        if valid_corners_in_image > minimum_corners_required:
             print(
                 f"  Pair {idx}: ✓ Both images detected. Added {valid_corners_in_image} object points"
             )
         else:
             print(
-                f"  Pair {idx}: ✗ {valid_corners_in_image} corners detected. Minimum 10 corners required"
+                f"  Pair {idx}: ✗ {valid_corners_in_image} corners detected. "
+                + f"Minimum {minimum_corners_required} corners required"
             )
 
     print(
         f"\nSuccessfully detected corners in {len(obj_points)}/{len(left_images)} pairs"
     )
-    return obj_points, left_img_points, right_img_points, valid_pairs
+    return (
+        obj_points,
+        left_img_points,
+        right_img_points,
+        left_valid_images,
+        right_valid_images,
+    )
+
+
+def _index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
+    """
+    Deterministic, high-contrast color from index.
+    """
+    hue = int(180 * idx / max(total, 1))
+    hsv = np.uint8([[[hue, 255, 255]]])
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
+    return int(bgr[0]), int(bgr[1]), int(bgr[2])
+
+
+def save_detected_corners(
+    output_path: Path,
+    obj_points: list[npt.NDArray[np.float32]],
+    left_img_points: list[npt.NDArray[np.float32]],
+    right_img_points: list[npt.NDArray[np.float32]],
+    left_valid_images: list[npt.NDArray[np.uint8]],
+    right_valid_images: list[npt.NDArray[np.uint8]],
+    radius: int = 4,
+    thickness: int = -1,
+):
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    num_views = len(left_img_points)
+
+    for i in range(num_views):
+        imgL = left_valid_images[i].copy()
+        imgR = right_valid_images[i].copy()
+
+        if imgL.ndim == 2:
+            imgL = cv2.cvtColor(imgL, cv2.COLOR_GRAY2BGR)
+        if imgR.ndim == 2:
+            imgR = cv2.cvtColor(imgR, cv2.COLOR_GRAY2BGR)
+
+        ptsL = left_img_points[i].reshape(-1, 2)
+        ptsR = right_img_points[i].reshape(-1, 2)
+
+        assert ptsL.shape == ptsR.shape, "Left/right corner count mismatch"
+
+        n_pts = ptsL.shape[0]
+
+        for j in range(n_pts):
+            color = _index_to_bgr(j, n_pts)
+
+            pL = tuple(np.round(ptsL[j]).astype(int))
+            pR = tuple(np.round(ptsR[j]).astype(int))
+
+            cv2.circle(imgL, pL, radius, color, thickness)
+            cv2.circle(imgR, pR, radius, color, thickness)
+
+            # if draw_indices:
+            #     cv2.putText(
+            #         imgL, str(j), (pL[0] + 5, pL[1] - 5),
+            #         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1
+            #     )
+            #     cv2.putText(
+            #         imgR, str(j), (pR[0] + 5, pR[1] - 5),
+            #         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1
+            #     )
+
+        # Concatenate for easier visual inspection
+        debug = np.hstack([imgL, imgR])
+
+        out_file = output_path / f"corners_{i:03d}.png"
+        cv2.imwrite(str(out_file), debug)
 
 
 def main(args: CliArgs):
@@ -134,9 +213,13 @@ def main(args: CliArgs):
     image_size = (first_img.shape[1], first_img.shape[0])
 
     # Prepare calibration data
-    obj_points, left_img_points, right_img_points, valid_pairs = (
-        prepare_stereo_charuco_data(board, left_images, right_images)
-    )
+    (
+        obj_points,
+        left_img_points,
+        right_img_points,
+        left_valid_images,
+        right_valid_images,
+    ) = prepare_stereo_charuco_data(board, left_images, right_images)
 
     if len(obj_points) < 10:
         print(
@@ -183,22 +266,33 @@ def main(args: CliArgs):
 
     print("\nCalibration complete!")
 
-    print("Saving rectified images...")
-    save_vis_path = args.output_path / "rect_vis"
-    save_vis_path.mkdir(parents=True, exist_ok=True)
-    for i in range(len(left_images)):
-        left_img = cv2.imread(str(left_images[i]))
-        right_img = cv2.imread(str(right_images[i]))
-        rectify_and_display(
-            left_img,
-            right_img,
-            rectification_maps_output.left_map1,
-            rectification_maps_output.left_map2,
-            rectification_maps_output.right_map1,
-            rectification_maps_output.right_map2,
-            display=False,
-            save_vis_path=save_vis_path / f"rectified_stereo_pair_{i}.png",
+    if args.save_debug_images:
+        print("Saving detected corners...")
+        save_detected_corners(
+            args.output_path / "debug_images" / "detected_corners",
+            obj_points,
+            left_img_points,
+            right_img_points,
+            left_valid_images,
+            right_valid_images,
         )
+
+        print("Saving rectified images...")
+        save_vis_path = args.output_path / "debug_images" / "rect_vis"
+        save_vis_path.mkdir(parents=True, exist_ok=True)
+        for i in range(len(left_images)):
+            left_img = cv2.imread(str(left_images[i]))
+            right_img = cv2.imread(str(right_images[i]))
+            rectify_and_display(
+                left_img,
+                right_img,
+                rectification_maps_output.left_map1,
+                rectification_maps_output.left_map2,
+                rectification_maps_output.right_map1,
+                rectification_maps_output.right_map2,
+                display=False,
+                save_vis_path=save_vis_path / f"rectified_stereo_pair_{i}.png",
+            )
 
 
 if __name__ == "__main__":
