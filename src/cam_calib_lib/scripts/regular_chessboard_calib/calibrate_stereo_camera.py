@@ -251,18 +251,19 @@ def perform_stereo_calibration(
     errors_stereo, stats_stereo = epipolar_error_px(
         left_img_points, right_img_points, F
     )
+    print("\nMy own error statistics")
     print(f"Epipolar error stereo: {stats_stereo['mean_px']:.4f} pixels")
     print(f"Epipolar error 95th percentile: {stats_stereo['p95_px']:.4f} pixels")
 
-    print("\nStereo calibration completed!")
+    print("\nOpencv Returned errors")
     print(f"Reprojection error left camera: {ret_left:.4f} pixels")
     print(f"Reprojection error right camera: {ret_right:.4f} pixels")
     print(f"Reprojection error stereo: {ret_stereo:.4f} pixels")
 
-    print(f"\nLeft camera matrix:\n{left_camera_matrix}")
-    print(f"\nRight camera matrix:\n{right_camera_matrix}")
-    print(f"\nRotation matrix:\n{R}")
-    print(f"\nTranslation vector:\n{T}")
+    # print(f"\nLeft camera matrix:\n{left_camera_matrix}")
+    # print(f"\nRight camera matrix:\n{right_camera_matrix}")
+    # print(f"\nRotation matrix:\n{R}")
+    # print(f"\nTranslation vector:\n{T}")
 
     return (
         left_camera_matrix,
@@ -579,12 +580,16 @@ def main(args: CliArgs):
         proj_mtx=P_right,
     )
     save_calibration_yaml_stereo_cam_additional(
-        filename=str(args.output_path / "additional.yaml"),
+        filename=str(args.output_path / "stereo.yaml"),
         image_size=image_size,
         F=F,
         E=E,
         T=T,
         R=R,
+        left_mtx=left_camera_matrix,
+        left_dist=left_dist_coeffs,
+        right_mtx=right_camera_matrix,
+        right_dist=right_dist_coeffs,
     )
 
     # Test rectification on first pair

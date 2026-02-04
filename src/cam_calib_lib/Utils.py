@@ -23,20 +23,69 @@ def load_camera_calib(filename: Path):
         calib_data["distortion_coefficients"]["data"], dtype=np.float64
     )
 
-    # rectification_matrix = np.array(
-    #     calib_data["rectification_matrix"]["data"], dtype=np.float64
-    # ).reshape((3, 3))
-    # projection_matrix = np.array(
-    #     calib_data["projection_matrix"]["data"], dtype=np.float64
-    # ).reshape((3, 4))
+    if "rectification_matrix" in calib_data:
+        rectification_matrix = np.array(
+            calib_data["rectification_matrix"]["data"], dtype=np.float64
+        ).reshape((3, 3))
+    else:
+        rectification_matrix = None
+
+    if "projection_matrix" in calib_data:
+        projection_matrix = np.array(
+            calib_data["projection_matrix"]["data"], dtype=np.float64
+        ).reshape((3, 4))
+    else:
+        projection_matrix = None
 
     return {
         "image_size": (image_width, image_height),
         "camera_name": camera_name,
         "camera_matrix": camera_matrix,
         "dist_coeffs": distortion_coeffs,
-        # "rectification_matrix": rectification_matrix,
-        # "projection_matrix": projection_matrix,
+        "rectification_matrix": rectification_matrix,
+        "projection_matrix": projection_matrix,
+    }
+
+
+def load_stereo_camera_calib(filename: Path):
+    assert isinstance(filename, Path), "Filename must be a Path object"
+    assert filename.suffix == ".yaml", "Filename must be a YAML file"
+    with open(filename, "r") as f:
+        calib_data = yaml.safe_load(f)
+
+    image_width = calib_data["image_width"]
+    image_height = calib_data["image_height"]
+    fundamental_matrix = np.array(
+        calib_data["Fundamental"]["data"], dtype=np.float64
+    ).reshape((3, 3))
+    essential_matrix = np.array(
+        calib_data["Essential"]["data"], dtype=np.float64
+    ).reshape((3, 3))
+    T = np.array(calib_data["T"]["data"], dtype=np.float64).reshape((3, 1))
+    R = np.array(calib_data["R"]["data"], dtype=np.float64).reshape((3, 3))
+    left_camera_matrix = np.array(
+        calib_data["left_camera_matrix"]["data"], dtype=np.float64
+    ).reshape((3, 3))
+    left_distortion_coefficients = np.array(
+        calib_data["left_distortion_coefficients"]["data"], dtype=np.float64
+    ).reshape((1, 5))
+    right_camera_matrix = np.array(
+        calib_data["right_camera_matrix"]["data"], dtype=np.float64
+    ).reshape((3, 3))
+    right_distortion_coefficients = np.array(
+        calib_data["right_distortion_coefficients"]["data"], dtype=np.float64
+    ).reshape((1, 5))
+
+    return {
+        "image_size": (image_width, image_height),
+        "fundamental_matrix": fundamental_matrix,
+        "essential_matrix": essential_matrix,
+        "T": T,
+        "R": R,
+        "left_camera_matrix": left_camera_matrix,
+        "left_distortion_coefficients": left_distortion_coefficients,
+        "right_camera_matrix": right_camera_matrix,
+        "right_distortion_coefficients": right_distortion_coefficients,
     }
 
 
@@ -143,16 +192,23 @@ projection_matrix:
 {proj_mtx_str_data}
 """
 
+
 def create_yaml_str_stereo_cam_additional(
     image_size: tuple[int, int],
     F: np.ndarray,
     E: np.ndarray,
     T: np.ndarray,
-    R: np.ndarray):
-
+    R: np.ndarray,
+    left_mtx: np.ndarray,
+    left_dist: np.ndarray,
+    right_mtx: np.ndarray,
+    right_dist: np.ndarray,
+):
     F_str_data = modify_string_for_yaml(format_array(F))
     E_str_data = modify_string_for_yaml(format_array(E))
     R_str_data = modify_string_for_yaml(format_array(R))
+    left_mtx_str_data = modify_string_for_yaml(format_array(left_mtx))
+    right_mtx_str_data = modify_string_for_yaml(format_array(right_mtx))
 
     return f"""image_width: {image_size[0]}
 image_height: {image_size[1]}
@@ -172,7 +228,24 @@ R:
   rows: 3
   cols: 3
 {R_str_data}
+left_camera_matrix:
+  rows: 3
+  cols: 3
+{left_mtx_str_data}
+left_distortion_coefficients:
+  rows: 1
+  cols: {left_dist.size}
+  data: [{", ".join(f"{v:.6f}" for v in left_dist.flatten())}]
+right_camera_matrix:
+  rows: 3
+  cols: 3
+{right_mtx_str_data}
+right_distortion_coefficients:
+  rows: 1
+  cols: {right_dist.size}
+  data: [{", ".join(f"{v:.6f}" for v in right_dist.flatten())}]
 """
+
 
 def save_calibration_yaml_single_cam(
     filename: str,
@@ -185,6 +258,7 @@ def save_calibration_yaml_single_cam(
         yaml_string = create_yaml_str_single_cam(image_size, mtx, dist, camera_name)
         f.write(yaml_string)
 
+
 def save_calibration_yaml_stereo_cam(
     filename: str,
     image_size: tuple[int, int],
@@ -195,8 +269,11 @@ def save_calibration_yaml_stereo_cam(
     proj_mtx: np.ndarray,
 ):
     with open(filename, "w") as f:
-        yaml_string = create_yaml_str_stereo_cam(image_size, mtx, dist, camera_name, rect_mtx, proj_mtx)
+        yaml_string = create_yaml_str_stereo_cam(
+            image_size, mtx, dist, camera_name, rect_mtx, proj_mtx
+        )
         f.write(yaml_string)
+
 
 def save_calibration_yaml_stereo_cam_additional(
     filename: str,
@@ -205,10 +282,17 @@ def save_calibration_yaml_stereo_cam_additional(
     E: np.ndarray,
     T: np.ndarray,
     R: np.ndarray,
+    left_mtx: np.ndarray,
+    left_dist: np.ndarray,
+    right_mtx: np.ndarray,
+    right_dist: np.ndarray,
 ):
     with open(filename, "w") as f:
-        yaml_string = create_yaml_str_stereo_cam_additional(image_size, F, E, T, R)
+        yaml_string = create_yaml_str_stereo_cam_additional(
+            image_size, F, E, T, R, left_mtx, left_dist, right_mtx, right_dist
+        )
         f.write(yaml_string)
+
 
 if __name__ == "__main__":
     mtx = np.array(
