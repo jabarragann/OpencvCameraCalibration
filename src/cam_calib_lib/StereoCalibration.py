@@ -13,6 +13,7 @@ from cam_calib_lib.Utils import (
     save_calibration_yaml_stereo_cam_additional,
 )
 
+
 @dataclass
 class StereoCalibrationOutput:
     left_mtx: npt.NDArray[np.float32]
@@ -83,7 +84,7 @@ def perform_stereo_calibration(
     left_img_points: list[npt.NDArray[np.float32]],
     right_img_points: list[npt.NDArray[np.float32]],
     image_size: tuple[int, int],
-    flags: int = cv2.CALIB_RATIONAL_MODEL,
+    single_calib_flags: int = None,
 ) -> tuple[
     npt.NDArray[np.float32],
     npt.NDArray[np.float32],
@@ -105,18 +106,20 @@ def perform_stereo_calibration(
     print("\nPerforming stereo calibration...")
 
     # First calibrate individual cameras
-    flags = None
+
+    # Only two radial distortion coefficients.
+    single_calib_flags = cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
     print("Calibrating left camera...")
     ret_left, left_camera_matrix, left_dist_coeffs, left_rvecs, left_tvecs = (
         cv2.calibrateCamera(
-            obj_points, left_img_points, image_size, None, None, flags=flags
+            obj_points, left_img_points, image_size, None, None, flags=single_calib_flags
         )
     )
 
     print("Calibrating right camera...")
     ret_right, right_camera_matrix, right_dist_coeffs, right_rvecs, right_tvecs = (
         cv2.calibrateCamera(
-            obj_points, right_img_points, image_size, None, None, flags=flags
+            obj_points, right_img_points, image_size, None, None, flags=single_calib_flags
         )
     )
 
@@ -143,7 +146,7 @@ def perform_stereo_calibration(
         right_dist_coeffs,
         image_size,
         flags=stereo_calibration_flags,
-        criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
+        # criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
     )
 
     ## Custom error metrics
