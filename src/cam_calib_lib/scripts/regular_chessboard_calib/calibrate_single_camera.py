@@ -11,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 
 from cam_calib_lib.ArgumentParsers import CameraCalibrationArgs
+from cam_calib_lib.CalibrationErrorMetrics import calculate_reprojection_error
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
 from cam_calib_lib.Utils import save_calibration_yaml_single_cam
 
@@ -107,40 +108,6 @@ def prepare_calibration_data(
     return obj_points, img_points
 
 
-def calculate_reprojection_error(
-    obj_points: List[npt.NDArray[np.float32]],
-    img_points: List[npt.NDArray[np.float32]],
-    rvecs: List[npt.NDArray[np.float32]],
-    tvecs: List[npt.NDArray[np.float32]],
-    mtx: npt.NDArray[np.float32],
-    dist: npt.NDArray[np.float32],
-) -> float:
-    """
-    Calculate reprojection error for camera calibration.
-
-    Args:
-        obj_points: List of 3D object points
-        img_points: List of 2D image points
-        rvecs: List of rotation vectors
-        tvecs: List of translation vectors
-        camera_matrix: Camera intrinsic matrix
-        dist_coeffs: Distortion coefficients
-
-    Returns:
-        Mean reprojection error in pixels
-    """
-    mean_error = 0.0
-    num_points = 0
-
-    for i in range(len(obj_points)):
-        imgpoints2, _ = cv2.projectPoints(obj_points[i], rvecs[i], tvecs[i], mtx, dist)
-        error = cv2.norm(img_points[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
-        mean_error += error
-        num_points += 1
-
-    mean_error /= len(obj_points)
-
-    return mean_error
 
 
 def perform_single_calibration(
