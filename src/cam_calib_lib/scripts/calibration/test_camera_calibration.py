@@ -6,7 +6,7 @@ import numpy as np
 
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
 from cam_calib_lib.Utils import load_camera_calib
-from cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera import (
+from cam_calib_lib.scripts.calibration.calibrate_single_camera import (
     calculate_reprojection_error,
     display_projected_corners,
     load_camera_images,

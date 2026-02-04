@@ -8,7 +8,7 @@ import numpy.typing as npt
 import numpy as np
 
 from cam_calib_lib.scripts.calibrate_camera import calculate_reprojection_error
-from cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera import (
+from cam_calib_lib.scripts.calibration.calibrate_single_camera import (
     display_projected_corners,
     display_undistorted_image,
     perform_single_calibration,
@@ -60,9 +60,7 @@ def prepare_calibration_data(
         failure = charuco_corners is None or charuco_ids is None or not ret
 
         if not failure:
-            obj_points_i = chessboard.get_object_points(
-                charuco_corners, charuco_ids
-            )
+            obj_points_i = chessboard.get_object_points(charuco_corners, charuco_ids)
             img_points_i = charuco_corners
 
             obj_points.append(obj_points_i)

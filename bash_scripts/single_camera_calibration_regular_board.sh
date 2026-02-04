@@ -6,7 +6,7 @@ pydebug() {
     python -m debugpy --listen 5678 --wait-for-client "$@"
 }
 
-python -m cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_camera \
+python -m cam_calib_lib.scripts.calibration.calibrate_single_camera \
     --images_path output/calib_011225/calibration_data \
     --camera_name right \
     --corners_per_board_row 8 \

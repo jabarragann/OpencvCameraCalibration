@@ -3,7 +3,7 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-from cam_calib_lib.CornerDetector import CharucoBoard
+from cam_calib_lib.scripts.simple_demos.CornerDetector import CharucoBoard
 from cam_calib_lib.Utils import save_calibration_yaml_single_cam
 from pyprojroot.here import here
 
@@ -47,9 +47,10 @@ def get_all_object_points(
             print(f"No Charuco corners detected for image {idx}")
             continue
 
-        obj_points, img_points = charuco_board.get_object_points(
+        obj_points = charuco_board.get_object_points(
             charuco_corners, charuco_ids
         )
+        img_points = charuco_corners
 
         all_obj_poinst.append(obj_points)
         all_img_points.append(img_points)

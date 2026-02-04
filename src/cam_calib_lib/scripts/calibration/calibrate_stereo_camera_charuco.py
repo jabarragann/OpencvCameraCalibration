@@ -4,7 +4,7 @@ import cv2
 from cam_calib_lib.ArgumentParsers import CameraCalibrationCharucoArgs
 from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
-from cam_calib_lib.scripts.regular_chessboard_calib.calibrate_stereo_camera import (
+from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     display_undistorted_images,
     load_stereo_images,
     rectify_and_display,

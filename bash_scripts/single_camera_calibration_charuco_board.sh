@@ -7,7 +7,7 @@ pydebug() {
 }
 
 camera_name="right"
-python -m cam_calib_lib.scripts.regular_chessboard_calib.calibrate_single_cam_charuco \
+python -m cam_calib_lib.scripts.calibration.calibrate_single_cam_charuco \
     --images_path output/mock_or_microscope_collection1/charuco_collection1/data_image_only \
     --camera_name $camera_name \
     --squares_in_x_dim 10 \
