@@ -140,7 +140,7 @@ def rectify_and_display(
     window_name: str = "Stereo Rectified Images",
     display: bool = True,
     save_vis_path: Optional[Path] = None,
-) -> None:
+) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
     """
     Rectify a pair of stereo images and display them side by side with OpenCV.
 
@@ -154,6 +154,8 @@ def rectify_and_display(
     # Rectify images
     left_rectified = cv2.remap(left_img, left_map1, left_map2, cv2.INTER_LINEAR)
     right_rectified = cv2.remap(right_img, right_map1, right_map2, cv2.INTER_LINEAR)
+    left_rectified_display = left_rectified.copy()
+    right_rectified_display = right_rectified.copy()
 
     # Draw horizontal lines for visual verification
     h, w = left_rectified.shape[:2]
@@ -162,11 +164,11 @@ def rectify_and_display(
             color = (0, 255, 0)
         else:
             color = (0, 0, 255)
-        cv2.line(left_rectified, (0, y), (w, y), color, 1)
-        cv2.line(right_rectified, (0, y), (w, y), color, 1)
+        cv2.line(left_rectified_display, (0, y), (w, y), color, 1)
+        cv2.line(right_rectified_display, (0, y), (w, y), color, 1)
 
     # Concatenate images side by side
-    stereo_pair = np.hstack([left_rectified, right_rectified])
+    stereo_pair = np.hstack([left_rectified_display, right_rectified_display])
 
     if save_vis_path is not None:
         cv2.imwrite(str(save_vis_path), stereo_pair)
@@ -178,6 +180,8 @@ def rectify_and_display(
         print("Displaying rectified images. Press any key to close...")
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+    
+    return left_rectified, right_rectified
 
 
 def display_undistorted_images(

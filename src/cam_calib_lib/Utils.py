@@ -13,8 +13,6 @@ def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
     return int(bgr[0]), int(bgr[1]), int(bgr[2])
 
 def load_camera_calib(filename: Path):
-    print(type(filename))
-    print(filename)
 
     assert isinstance(filename, Path), "Filename must be a Path object"
     assert filename.suffix == ".yaml", "Filename must be a YAML file"
