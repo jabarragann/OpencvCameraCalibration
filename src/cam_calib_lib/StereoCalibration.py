@@ -237,6 +237,8 @@ def compute_rectification_maps(
 ) -> tuple[
     npt.NDArray[np.float32],
     npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float32],
 ]:
     """
     Compute rectification maps for stereo images.

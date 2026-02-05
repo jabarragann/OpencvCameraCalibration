@@ -1,7 +1,16 @@
 from pathlib import Path
 import yaml
 import numpy as np
+import cv2
 
+def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
+    """
+    Deterministic, high-contrast color from index.
+    """
+    hue = int(180 * idx / max(total, 1))
+    hsv = np.uint8([[[hue, 255, 255]]])
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
+    return int(bgr[0]), int(bgr[1]), int(bgr[2])
 
 def load_camera_calib(filename: Path):
     print(type(filename))

@@ -4,6 +4,7 @@ import cv2
 from cam_calib_lib.ArgumentParsers import CameraCalibrationCharucoArgs
 from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
+from cam_calib_lib.Utils import index_to_bgr
 from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     display_undistorted_images,
     load_stereo_images,
@@ -120,14 +121,7 @@ def prepare_stereo_charuco_data(
     )
 
 
-def _index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
-    """
-    Deterministic, high-contrast color from index.
-    """
-    hue = int(180 * idx / max(total, 1))
-    hsv = np.uint8([[[hue, 255, 255]]])
-    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
-    return int(bgr[0]), int(bgr[1]), int(bgr[2])
+
 
 
 def save_detected_corners(
@@ -161,7 +155,7 @@ def save_detected_corners(
         n_pts = ptsL.shape[0]
 
         for j in range(n_pts):
-            color = _index_to_bgr(j, n_pts)
+            color = index_to_bgr(j, n_pts)
 
             pL = tuple(np.round(ptsL[j]).astype(int))
             pR = tuple(np.round(ptsR[j]).astype(int))

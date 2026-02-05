@@ -157,9 +157,13 @@ def rectify_and_display(
 
     # Draw horizontal lines for visual verification
     h, w = left_rectified.shape[:2]
-    for y in range(0, h, 50):
-        cv2.line(left_rectified, (0, y), (w, y), (0, 255, 0), 1)
-        cv2.line(right_rectified, (0, y), (w, y), (0, 255, 0), 1)
+    for idx,y in enumerate(range(0, h, 50)):
+        if idx % 2 == 0:
+            color = (0, 255, 0)
+        else:
+            color = (0, 0, 255)
+        cv2.line(left_rectified, (0, y), (w, y), color, 1)
+        cv2.line(right_rectified, (0, y), (w, y), color, 1)
 
     # Concatenate images side by side
     stereo_pair = np.hstack([left_rectified, right_rectified])
