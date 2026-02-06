@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import cv2
+from cam_calib_lib import ArgumentParsers as calib_args
 from cam_calib_lib.ArgumentParsers import CameraCalibrationCharucoArgs
 from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
 from cam_calib_lib.Utils import index_to_bgr
+from cam_calib_lib import Utils as calib_utils
 from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     display_undistorted_images,
     load_stereo_images,
@@ -121,9 +123,6 @@ def prepare_stereo_charuco_data(
     )
 
 
-
-
-
 def save_detected_corners(
     output_path: Path,
     obj_points: list[npt.NDArray[np.float32]],
@@ -185,7 +184,25 @@ def main(args: CliArgs):
     assert isinstance(args.output_path, Path)
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
 
-    aruco_dict = cv2.aruco.getPredefinedDictionary(args.aruco_dict)
+    # args.save(args.output_path / "input_parameters.yaml")
+
+    calib_utils.save_calibration_parameters(
+        args.output_path / "input_parameters.yaml",
+        args.aruco_dict,
+        args.squares_in_x_dim,
+        args.squares_in_y_dim,
+        args.square_size,
+        args.marker_size,
+        args.distortion_flags,
+        args.stereo_flags,
+    )
+
+    ## Opencv Flags
+    distortion_flags = calib_args.compose_cv2_flags(args.distortion_flags)
+    stereo_flags = calib_args.compose_cv2_flags( args.stereo_flags )
+    aruco_dict_flag = calib_args.aruco_dict_from_string_string_list(args.aruco_dict)
+
+    aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_flag)
     board = OpenCVCharucoBoard(
         squares_in_x_dim=args.squares_in_x_dim,
         squares_in_y_dim=args.squares_in_y_dim,
@@ -226,7 +243,8 @@ def main(args: CliArgs):
             left_img_points,
             right_img_points,
             image_size,
-            args.flags,
+            distortion_flags,
+            stereo_flags,
             args.output_path,
         )
     )

@@ -127,7 +127,9 @@ def main(args: CliArgs):
     ## All the same here below.
     # Perform single camera calibration
     camera_matrix, dist_coeffs, rvecs, tvecs, reprojection_error = (
-        perform_single_calibration(obj_points, img_points, image_size, args.flags)
+        perform_single_calibration(
+            obj_points, img_points, image_size, args.distortion_flags
+        )
     )
 
     # Calculate reprojection errors with and without distortion

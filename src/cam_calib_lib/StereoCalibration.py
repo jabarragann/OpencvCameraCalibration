@@ -84,7 +84,8 @@ def perform_stereo_calibration(
     left_img_points: list[npt.NDArray[np.float32]],
     right_img_points: list[npt.NDArray[np.float32]],
     image_size: tuple[int, int],
-    single_calib_flags: int = None,
+    distortion_flags: int,
+    stereo_flags: int,
 ) -> tuple[
     npt.NDArray[np.float32],
     npt.NDArray[np.float32],
@@ -99,6 +100,10 @@ def perform_stereo_calibration(
     """
     Perform stereo calibration.
 
+    distortion_flags: int, intended for flags relating the distortion model
+    stereo_flags: int, intended for flags relating the stereo calibration.
+    Used to toogle between cv2.CALIB_FIX_INTRINSIC and cv2.CALIB_USE_INTRINSIC_GUESS
+
     Returns:
         (left_camera_matrix, left_dist_coeffs, right_camera_matrix, right_dist_coeffs,
          R, T, E, F, reprojection_error)
@@ -107,24 +112,41 @@ def perform_stereo_calibration(
 
     # First calibrate individual cameras
 
-    # Only two radial distortion coefficients.
-    single_calib_flags = cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
+    # The bugging flags: Only two radial distortion coefficients.
+    # single_calib_flags = cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
+
     print("Calibrating left camera...")
     ret_left, left_camera_matrix, left_dist_coeffs, left_rvecs, left_tvecs = (
         cv2.calibrateCamera(
-            obj_points, left_img_points, image_size, None, None, flags=single_calib_flags
+            obj_points,
+            left_img_points,
+            image_size,
+            None,
+            None,
+            flags=distortion_flags,
         )
     )
 
     print("Calibrating right camera...")
     ret_right, right_camera_matrix, right_dist_coeffs, right_rvecs, right_tvecs = (
         cv2.calibrateCamera(
-            obj_points, right_img_points, image_size, None, None, flags=single_calib_flags
+            obj_points,
+            right_img_points,
+            image_size,
+            None,
+            None,
+            flags=distortion_flags,
         )
     )
 
+    print(left_camera_matrix)
+    print(right_camera_matrix)
+
     # Stereo calibration
-    stereo_calibration_flags = cv2.CALIB_FIX_INTRINSIC
+    # The bugging flags: cv2.CALIB_FIX_INTRINSIC
+    # And for mock or microscope: cv2.CALIB_USE_INTRINSIC_GUESS
+    # stereo_calibration_flags = cv2.CALIB_USE_INTRINSIC_GUESS | cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
+
     print("Performing stereo calibration...")
     (
         ret_stereo,
@@ -145,9 +167,13 @@ def perform_stereo_calibration(
         right_camera_matrix,
         right_dist_coeffs,
         image_size,
-        flags=stereo_calibration_flags,
-        # criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
+        flags=stereo_flags | distortion_flags,
+        criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
     )
+
+    print("matrices after stereo calibration")
+    print(left_camera_matrix)
+    print(right_camera_matrix)
 
     ## Custom error metrics
     errors_stereo, stats_stereo = epipolar_error_px(
@@ -260,8 +286,18 @@ def compute_rectification_maps(
 
 
 def stereo_calibration_pipeline(
-    obj_points, left_img_points, right_img_points, image_size, flags, output_path: Path
+    obj_points,
+    left_img_points,
+    right_img_points,
+    image_size,
+    distortion_flags: int,
+    stereo_flags: int,
+    output_path: Path,
 ) -> tuple[StereoCalibrationOutput, RectificationOutput, RectificationMapsOutput]:
+
+    assert isinstance(distortion_flags, int), "distortion_flags must be an integer"
+    assert isinstance(stereo_flags, int), "stereo_flags must be an integer"
+
     # Perform stereo calibration
     (
         left_camera_matrix,
@@ -274,7 +310,12 @@ def stereo_calibration_pipeline(
         F,
         reprojection_error,
     ) = perform_stereo_calibration(
-        obj_points, left_img_points, right_img_points, image_size, flags
+        obj_points,
+        left_img_points,
+        right_img_points,
+        image_size,
+        distortion_flags,
+        stereo_flags,
     )
 
     # Compute rectification matrices

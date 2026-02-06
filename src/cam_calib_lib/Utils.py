@@ -3,6 +3,7 @@ import yaml
 import numpy as np
 import cv2
 
+
 def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
     """
     Deterministic, high-contrast color from index.
@@ -11,6 +12,7 @@ def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
     hsv = np.uint8([[[hue, 255, 255]]])
     bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
     return int(bgr[0]), int(bgr[1]), int(bgr[2])
+
 
 def load_camera_calib(filename: Path):
 
@@ -299,6 +301,29 @@ def save_calibration_yaml_stereo_cam_additional(
             image_size, F, E, T, R, left_mtx, left_dist, right_mtx, right_dist
         )
         f.write(yaml_string)
+
+
+def save_calibration_parameters(
+    filename: Path,
+    aruco_dict: str,
+    squares_per_row: int,
+    squares_per_col: int,
+    square_size: float,
+    marker_size: float,
+    distortion_flags: list[str],
+    stereo_calib_flags: list[str],
+):
+    params_dict = {}
+    params_dict["aruco_dict"] = aruco_dict
+    params_dict["squares_per_row"] = squares_per_row
+    params_dict["squares_per_col"] = squares_per_col
+    params_dict["square_size"] = square_size
+    params_dict["marker_size"] = marker_size
+    params_dict["distortion_flags"] = distortion_flags
+    params_dict["stereo_calib_flags"] = stereo_calib_flags
+
+    with open(filename, "w") as f:
+        yaml.dump(params_dict, f)
 
 
 if __name__ == "__main__":
