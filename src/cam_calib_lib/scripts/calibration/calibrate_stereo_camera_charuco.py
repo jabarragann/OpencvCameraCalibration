@@ -186,7 +186,7 @@ def main(args: CliArgs):
 
     # args.save(args.output_path / "input_parameters.yaml")
 
-    calib_utils.save_calibration_parameters(
+    calib_utils.save_calibration_parameters_charuco(
         args.output_path / "input_parameters.yaml",
         args.aruco_dict,
         args.squares_in_x_dim,
@@ -199,7 +199,7 @@ def main(args: CliArgs):
 
     ## Opencv Flags
     distortion_flags = calib_args.compose_cv2_flags(args.distortion_flags)
-    stereo_flags = calib_args.compose_cv2_flags( args.stereo_flags )
+    stereo_flags = calib_args.compose_cv2_flags(args.stereo_flags)
     aruco_dict_flag = calib_args.aruco_dict_from_string_string_list(args.aruco_dict)
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_flag)

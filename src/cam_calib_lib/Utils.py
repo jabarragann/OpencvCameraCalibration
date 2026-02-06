@@ -303,7 +303,25 @@ def save_calibration_yaml_stereo_cam_additional(
         f.write(yaml_string)
 
 
-def save_calibration_parameters(
+def save_calibration_parameters_regular(
+    filename: Path,
+    corners_per_row: int,
+    corners_per_column: int,
+    square_size: float,
+    distortion_flags: list[str],
+    stereo_calib_flags: list[str],
+):
+    params_dict = {}
+    params_dict["corners_per_row"] = corners_per_row
+    params_dict["corners_per_column"] = corners_per_column
+    params_dict["square_size"] = square_size
+    params_dict["distortion_flags"] = distortion_flags
+    params_dict["stereo_calib_flags"] = stereo_calib_flags
+
+    with open(filename, "w") as f:
+        yaml.dump(params_dict, f)
+
+def save_calibration_parameters_charuco(
     filename: Path,
     aruco_dict: str,
     squares_per_row: int,

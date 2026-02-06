@@ -12,15 +12,34 @@ import numpy.typing as npt
 from tap import Tap
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
+from cam_calib_lib import Utils as calib_utils
+from cam_calib_lib import ArgumentParsers as calib_args
 
 
 class CliArgs(Tap):
     images_path: Path
     output_path: Path = Path("./stereo_calibration_output")
-    corners_per_board_row: int = 8
-    corners_per_board_column: int = 5
-    square_size: float = 0.01  # in meters
-    flags: int = cv2.CALIB_FIX_K3
+    corners_per_board_row: int
+    corners_per_board_column: int
+    square_size: float  # in meters
+    distortion_flags: list[str] = ["CALIB_FIX_K3", "CALIB_ZERO_TANGENT_DIST"]
+    stereo_flags: list[str] = ["CALIB_FIX_INTRINSIC"]
+
+    def configure(self):
+        self.add_argument(
+            "--distortion_flags",
+            help="Extra configuration options for distortion model."
+            + " Default: [CALIB_FIX_K3, CALIB_ZERO_TANGENT_DIST]",
+            nargs="+",
+        )
+        self.add_argument(
+            "--stereo_flags",
+            help=(
+                "Extra configuration options for stereo calibration."
+                + " Default: CALIB_FIX_INTRINSIC. For MockOR Microscope use: CALIB_USE_INTRINSIC_GUESS"
+            ),
+            nargs="+",
+        )
 
 
 def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
@@ -159,7 +178,7 @@ def rectify_and_display(
 
     # Draw horizontal lines for visual verification
     h, w = left_rectified.shape[:2]
-    for idx,y in enumerate(range(0, h, 50)):
+    for idx, y in enumerate(range(0, h, 50)):
         if idx % 2 == 0:
             color = (0, 255, 0)
         else:
@@ -180,7 +199,7 @@ def rectify_and_display(
         print("Displaying rectified images. Press any key to close...")
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-    
+
     return left_rectified, right_rectified
 
 
@@ -233,6 +252,20 @@ def main(args: CliArgs):
     assert isinstance(args.images_path, Path)
     assert isinstance(args.output_path, Path)
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
+    args.output_path.mkdir(parents=True, exist_ok=True)
+
+    calib_utils.save_calibration_parameters_regular(
+        args.output_path / "input_parameters.yaml",
+        args.corners_per_board_row,
+        args.corners_per_board_column,
+        args.square_size,
+        args.distortion_flags,
+        args.stereo_flags,
+    )
+
+    ## Opencv Flags
+    distortion_flags = calib_args.compose_cv2_flags(args.distortion_flags)
+    stereo_flags = calib_args.compose_cv2_flags(args.stereo_flags)
 
     regular_chessboard = OpenCVChessboard(
         corners_per_row=args.corners_per_board_row,
@@ -268,7 +301,8 @@ def main(args: CliArgs):
             left_img_points,
             right_img_points,
             image_size,
-            args.flags,
+            distortion_flags,
+            stereo_flags,
             args.output_path,
         )
     )
