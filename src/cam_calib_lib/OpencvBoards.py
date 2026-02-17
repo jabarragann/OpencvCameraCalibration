@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Optional,  Tuple, cast
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -33,7 +33,7 @@ class OpenCVChessboard(OpenCVCornerDetector):
         self.pattern_size = (self.corners_per_row, self.corners_per_column)
         self.obj_points = self.create_chessboard_points()
 
-    def create_chessboard_points(self) -> np.ndarray:
+    def create_chessboard_points(self) -> npt.NDArray[np.float32]:
         objp = np.zeros((self.corners_per_row * self.corners_per_column, 3), np.float32)
 
         objp[:, :2] = np.mgrid[
@@ -132,13 +132,16 @@ class OpenCVCharucoBoard(OpenCVCornerDetector):
     def get_object_points(
         self,
         corners: npt.NDArray[np.float32],
-        corners_ids: npt.NDArray[np.int32],
+        ids: npt.NDArray[np.int32],
     ) -> npt.NDArray[np.float32]:
 
-        obj_points, img_points = self.board.matchImagePoints(
-            corners,  # type: ignore
-            corners_ids,
+        obj_points , img_points = self.board.matchImagePoints( # type: ignore
+            corners, #type: ignore
+            ids, #type: ignore
         )
+
+        obj_points = cast(npt.NDArray[np.float32], obj_points)
+        img_points = cast(npt.NDArray[np.float32], img_points)
 
         obj_points = np.asarray(obj_points, dtype=np.float32)
         # img_points = np.asarray(img_points, dtype=np.float32)
