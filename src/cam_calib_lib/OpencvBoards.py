@@ -40,6 +40,8 @@ class OpenCVChessboard(OpenCVCornerDetector):
             0 : self.corners_per_row, 0 : self.corners_per_column
         ].T.reshape(-1, 2)  # RIGHT
 
+        objp *= self.square_size
+
         ## Kept here for reference
         # object points generation assumes x direction is along columns and y direction is along rows
         # objp[:,:2] = np.mgrid[0:self.corners_per_column, 0:self.corners_per_row].T.reshape(-1,2) # WRONG
