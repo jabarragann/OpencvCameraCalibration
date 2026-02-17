@@ -2,6 +2,7 @@ from pathlib import Path
 import yaml
 import numpy as np
 import cv2
+import numpy.typing as npt
 
 
 def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
@@ -9,7 +10,7 @@ def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
     Deterministic, high-contrast color from index.
     """
     hue = int(180 * idx / max(total, 1))
-    hsv = np.uint8([[[hue, 255, 255]]])
+    hsv = np.array([[[hue, 255, 255]]], dtype=np.uint8)
     bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
     return int(bgr[0]), int(bgr[1]), int(bgr[2])
 
@@ -98,14 +99,14 @@ def load_stereo_camera_calib(filename: Path):
     }
 
 
-def format_array(arr, per_row=3):
+def format_array(arr: npt.NDArray[np.float64], per_row: int = 3) -> list[str]:
     values = arr.flatten(order="C")
-    lines = []
+    lines: list[str] = []
 
     for i in range(0, len(values), per_row):
         chunk = values[i : i + per_row]
         # Format each number: zero -> 0.0, otherwise 6 decimal points
-        formatted = []
+        formatted: list[str] = []
         for v in chunk:
             if v == 0.0:
                 s = f"{v:.1f}"
@@ -138,7 +139,7 @@ def modify_string_for_yaml(formated_arry: list[str]):
     last_line_text_end = "]"
 
     assert len(formated_arry) == 3, "Expected 3 lines of data"
-    results = []
+    results: list[str] = []
     results.append(first_line_text + formated_arry[0])
     results.append(other_line_text + formated_arry[1])
     # remove the last comma from the last line
@@ -148,7 +149,7 @@ def modify_string_for_yaml(formated_arry: list[str]):
 
 
 def create_yaml_str_single_cam(
-    image_size: tuple[int, int], mtx: np.ndarray, dist: np.ndarray, camera_name: str
+    image_size: tuple[int, int], mtx: npt.NDArray[np.float64], dist: npt.NDArray[np.float64], camera_name: str
 ):
     mtx_str_data = modify_string_for_yaml(format_array(mtx))
 
@@ -169,11 +170,11 @@ distortion_coefficients:
 
 def create_yaml_str_stereo_cam(
     image_size: tuple[int, int],
-    mtx: np.ndarray,
-    dist: np.ndarray,
+    mtx: npt.NDArray[np.float64],
+    dist: npt.NDArray[np.float64],
     camera_name: str,
-    rect_mtx: np.ndarray,
-    proj_mtx: np.ndarray,
+    rect_mtx: npt.NDArray[np.float64],
+    proj_mtx: npt.NDArray[np.float64],
 ):
     mtx_str_data = modify_string_for_yaml(format_array(mtx))
     rect_mtx_str_data = modify_string_for_yaml(format_array(rect_mtx))
@@ -204,14 +205,14 @@ projection_matrix:
 
 def create_yaml_str_stereo_cam_additional(
     image_size: tuple[int, int],
-    F: np.ndarray,
-    E: np.ndarray,
-    T: np.ndarray,
-    R: np.ndarray,
-    left_mtx: np.ndarray,
-    left_dist: np.ndarray,
-    right_mtx: np.ndarray,
-    right_dist: np.ndarray,
+    F: npt.NDArray[np.float64],
+    E: npt.NDArray[np.float64],
+    T: npt.NDArray[np.float64],
+    R: npt.NDArray[np.float64],
+    left_mtx: npt.NDArray[np.float64],
+    left_dist: npt.NDArray[np.float64],
+    right_mtx: npt.NDArray[np.float64],
+    right_dist: npt.NDArray[np.float64],
 ):
     F_str_data = modify_string_for_yaml(format_array(F))
     E_str_data = modify_string_for_yaml(format_array(E))
@@ -259,8 +260,8 @@ right_distortion_coefficients:
 def save_calibration_yaml_single_cam(
     filename: str,
     image_size: tuple[int, int],
-    mtx: np.ndarray,
-    dist: np.ndarray,
+    mtx: npt.NDArray[np.float64],
+    dist: npt.NDArray[np.float64],
     camera_name: str,
 ):
     with open(filename, "w") as f:
@@ -271,11 +272,11 @@ def save_calibration_yaml_single_cam(
 def save_calibration_yaml_stereo_cam(
     filename: str,
     image_size: tuple[int, int],
-    mtx: np.ndarray,
-    dist: np.ndarray,
+    mtx: npt.NDArray[np.float64],
+    dist: npt.NDArray[np.float64],
     camera_name: str,
-    rect_mtx: np.ndarray,
-    proj_mtx: np.ndarray,
+    rect_mtx: npt.NDArray[np.float64],
+    proj_mtx: npt.NDArray[np.float64],
 ):
     with open(filename, "w") as f:
         yaml_string = create_yaml_str_stereo_cam(
@@ -286,15 +287,15 @@ def save_calibration_yaml_stereo_cam(
 
 def save_calibration_yaml_stereo_cam_additional(
     filename: str,
-    image_size: tuple,
-    F: np.ndarray,
-    E: np.ndarray,
-    T: np.ndarray,
-    R: np.ndarray,
-    left_mtx: np.ndarray,
-    left_dist: np.ndarray,
-    right_mtx: np.ndarray,
-    right_dist: np.ndarray,
+    image_size: tuple[int, int],
+    F: npt.NDArray[np.float64],
+    E: npt.NDArray[np.float64],
+    T: npt.NDArray[np.float64],
+    R: npt.NDArray[np.float64],
+    left_mtx: npt.NDArray[np.float64],
+    left_dist: npt.NDArray[np.float64],
+    right_mtx: npt.NDArray[np.float64],
+    right_dist: npt.NDArray[np.float64],
 ):
     with open(filename, "w") as f:
         yaml_string = create_yaml_str_stereo_cam_additional(
@@ -311,7 +312,7 @@ def save_calibration_parameters_regular(
     distortion_flags: list[str],
     stereo_calib_flags: list[str],
 ):
-    params_dict = {}
+    params_dict: dict[str, int | float | list[str]] = {}
     params_dict["corners_per_row"] = corners_per_row
     params_dict["corners_per_column"] = corners_per_column
     params_dict["square_size"] = square_size
@@ -331,7 +332,7 @@ def save_calibration_parameters_charuco(
     distortion_flags: list[str],
     stereo_calib_flags: list[str],
 ):
-    params_dict = {}
+    params_dict: dict[str, str | int | float | list[str]] = {}
     params_dict["aruco_dict"] = aruco_dict
     params_dict["squares_per_row"] = squares_per_row
     params_dict["squares_per_col"] = squares_per_col
