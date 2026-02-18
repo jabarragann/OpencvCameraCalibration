@@ -248,6 +248,34 @@ def display_undistorted_images(
     cv2.destroyAllWindows()
 
 
+def report_rectification_errors(
+    all_rect_ids: list[str],
+    errors_per_image: npt.NDArray[np.float32],
+    output_path: Path,
+):
+
+    print("Images with big errors:")
+    images_to_filter:list[str] = []
+    for idx, err in zip(all_rect_ids, errors_per_image):
+        if err > 1.0:
+            print(f"Image {idx} error: {err}")
+            images_to_filter.append(idx)
+
+    rectified_error = np.array(errors_per_image).squeeze()
+
+    # Save images to filter in a txt file
+    with open(output_path / "images_to_filter.txt", "w") as f:
+        for img_id in images_to_filter:
+            f.write(f"{img_id}\n")
+
+    ## Calculate error statistics
+    print(f"Rectified error mean: {np.mean(rectified_error)}")
+    print(f"Rectified error std: {np.std(rectified_error)}")
+    print(f"Rectified error max: {np.max(rectified_error)}")
+    print(f"Rectified error min: {np.min(rectified_error)}")
+    print(f"95% confidence interval: {np.percentile(rectified_error, 95)}")
+
+
 def main(args: CliArgs):
     assert isinstance(args.images_path, Path)
     assert isinstance(args.output_path, Path)
@@ -340,19 +368,20 @@ def main(args: CliArgs):
 
     all_rect_corners_left = []
     all_rect_corners_right = []
-    all_rect_ids = [] 
+    all_rect_ids = []
     save_vis_path = args.output_path / "rect_vis"
     save_vis_path.mkdir(parents=True, exist_ok=True)
     for i in range(len(left_images)):
         left_img = cv2.imread(str(left_images[i]))
         right_img = cv2.imread(str(right_images[i]))
 
-
         match = re.search(r"-(\d+)\.png$", left_images[i].name)
         if match:
             image_id = match.group(1)
         else:
-            raise ValueError(f"Could not extract image ID from filename: {left_images[i].name}")
+            raise ValueError(
+                f"Could not extract image ID from filename: {left_images[i].name}"
+            )
 
         left_rectified, right_rectified = rectify_and_display(
             left_img,
@@ -370,41 +399,25 @@ def main(args: CliArgs):
         ret_right, corners_right, _ = regular_chessboard.detect_corners(right_rectified)
 
         if ret_left and ret_right:
-            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0)) 
+            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0))
             all_rect_corners_right.append(np.expand_dims(corners_right, axis=0))
             all_rect_ids.append(image_id)
-    
+
     ## lrect_corners shape: (N_img, N_corners, 1, 2)
     lrect_corners = np.concatenate(all_rect_corners_left)
     rrect_corners = np.concatenate(all_rect_corners_right)
 
-    d = lrect_corners [:, :, :, 1] - rrect_corners[:,:, :, 1]
+    ## Rectification error - Measure difference in y-direction
+    ## For corresponding points.
+    d = lrect_corners[:, :, :, 1] - rrect_corners[:, :, :, 1]
     errors_per_image = []
+
     for idx in range(d.shape[0]):
         img_error = np.mean(np.sqrt(np.square(d[idx])))
         errors_per_image.append(img_error)
         # print(f"Image {all_rect_ids[idx]} error: {img_error}")
 
-    print("Images with big errors:")
-    images_to_filter = []
-    for idx, err in zip(all_rect_ids, errors_per_image):
-        if err > 1.0:
-            print(f"Image {idx} error: {err}")
-            images_to_filter.append(idx)
-
-    rectified_error = np.array(errors_per_image).squeeze()
-
-    # Save images to filter in a txt file
-    with open(args.output_path / "images_to_filter.txt", "w") as f:
-        for img_id in images_to_filter:
-            f.write(f"{img_id}\n")
-    
-    ## Calculate error statistics
-    print(f"Rectified error mean: {np.mean(rectified_error)}")
-    print(f"Rectified error std: {np.std(rectified_error)}")
-    print(f"Rectified error max: {np.max(rectified_error)}")
-    print(f"Rectified error min: {np.min(rectified_error)}")
-    print(f"95% confidence interval: {np.percentile(rectified_error, 95)}")
+    report_rectification_errors(all_rect_ids, errors_per_image, args.output_path)
 
 
 if __name__ == "__main__":
