@@ -337,12 +337,24 @@ def main(args: CliArgs):
     print("\nCalibration complete!")
 
     print("Saving rectified images...")
+
+    all_rect_corners_left = []
+    all_rect_corners_right = []
+    all_rect_ids = [] 
     save_vis_path = args.output_path / "rect_vis"
     save_vis_path.mkdir(parents=True, exist_ok=True)
     for i in range(len(left_images)):
         left_img = cv2.imread(str(left_images[i]))
         right_img = cv2.imread(str(right_images[i]))
-        rectify_and_display(
+
+
+        match = re.search(r"-(\d+)\.png$", left_images[i].name)
+        if match:
+            image_id = match.group(1)
+        else:
+            raise ValueError(f"Could not extract image ID from filename: {left_images[i].name}")
+
+        left_rectified, right_rectified = rectify_and_display(
             left_img,
             right_img,
             rectification_maps_output.left_map1,
@@ -352,6 +364,47 @@ def main(args: CliArgs):
             display=False,
             save_vis_path=save_vis_path / f"rectified_stereo_pair_{i}.png",
         )
+
+        ## Calculate corners again to measure rectification error
+        ret_left, corners_left, _ = regular_chessboard.detect_corners(left_rectified)
+        ret_right, corners_right, _ = regular_chessboard.detect_corners(right_rectified)
+
+        if ret_left and ret_right:
+            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0)) 
+            all_rect_corners_right.append(np.expand_dims(corners_right, axis=0))
+            all_rect_ids.append(image_id)
+    
+    ## lrect_corners shape: (N_img, N_corners, 1, 2)
+    lrect_corners = np.concatenate(all_rect_corners_left)
+    rrect_corners = np.concatenate(all_rect_corners_right)
+
+    d = lrect_corners [:, :, :, 1] - rrect_corners[:,:, :, 1]
+    errors_per_image = []
+    for idx in range(d.shape[0]):
+        img_error = np.mean(np.sqrt(np.square(d[idx])))
+        errors_per_image.append(img_error)
+        # print(f"Image {all_rect_ids[idx]} error: {img_error}")
+
+    print("Images with big errors:")
+    images_to_filter = []
+    for idx, err in zip(all_rect_ids, errors_per_image):
+        if err > 1.0:
+            print(f"Image {idx} error: {err}")
+            images_to_filter.append(idx)
+
+    rectified_error = np.array(errors_per_image).squeeze()
+
+    # Save images to filter in a txt file
+    with open(args.output_path / "images_to_filter.txt", "w") as f:
+        for img_id in images_to_filter:
+            f.write(f"{img_id}\n")
+    
+    ## Calculate error statistics
+    print(f"Rectified error mean: {np.mean(rectified_error)}")
+    print(f"Rectified error std: {np.std(rectified_error)}")
+    print(f"Rectified error max: {np.max(rectified_error)}")
+    print(f"Rectified error min: {np.min(rectified_error)}")
+    print(f"95% confidence interval: {np.percentile(rectified_error, 95)}")
 
 
 if __name__ == "__main__":
