@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 import numpy as np
 import numpy.typing as npt
 import cv2
@@ -139,8 +140,8 @@ def perform_stereo_calibration(
         )
     )
 
-    print(left_camera_matrix)
-    print(right_camera_matrix)
+    # print(left_camera_matrix)
+    # print(right_camera_matrix)
 
     # Stereo calibration
     # The bugging flags: cv2.CALIB_FIX_INTRINSIC
@@ -171,9 +172,9 @@ def perform_stereo_calibration(
         criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6),
     )
 
-    print("matrices after stereo calibration")
-    print(left_camera_matrix)
-    print(right_camera_matrix)
+    # print("matrices after stereo calibration")
+    # print(left_camera_matrix)
+    # print(right_camera_matrix)
 
     ## Custom error metrics
     errors_stereo, stats_stereo = epipolar_error_px(
@@ -233,7 +234,7 @@ def compute_rectification_matrices(
     image_size: tuple[int, int],
     R: npt.NDArray[np.float32],
     T: npt.NDArray[np.float32],
-    alpha: float = 1.0,
+    alpha: float = 0.0,
 ):
     R_left, R_right, P_left, P_right, Q, left_roi, right_roi = cv2.stereoRectify(
         left_camera_matrix,
@@ -286,10 +287,10 @@ def compute_rectification_maps(
 
 
 def stereo_calibration_pipeline(
-    obj_points,
-    left_img_points,
-    right_img_points,
-    image_size,
+    obj_points: Sequence[npt.NDArray[np.float32]],
+    left_img_points: Sequence[npt.NDArray[np.float32]],
+    right_img_points: Sequence[npt.NDArray[np.float32]],
+    image_size: tuple[int, int],
     distortion_flags: int,
     stereo_flags: int,
     output_path: Path,

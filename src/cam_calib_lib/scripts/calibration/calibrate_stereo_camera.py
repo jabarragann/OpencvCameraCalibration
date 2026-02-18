@@ -26,13 +26,13 @@ class CliArgs(Tap):
     stereo_flags: list[str] = ["CALIB_FIX_INTRINSIC"]
 
     def configure(self):
-        self.add_argument(
+        self.add_argument( # type: ignore 
             "--distortion_flags",
             help="Extra configuration options for distortion model."
             + " Default: [CALIB_FIX_K3, CALIB_ZERO_TANGENT_DIST]",
             nargs="+",
         )
-        self.add_argument(
+        self.add_argument( # type: ignore
             "--stereo_flags",
             help=(
                 "Extra configuration options for stereo calibration."
@@ -54,8 +54,8 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
     all_files = sorted(images_path.glob("*.png"))
 
     # Extract frame numbers from filenames
-    left_dict = {}
-    right_dict = {}
+    left_dict: dict[int, Path] = {}
+    right_dict: dict[int, Path] = {}
 
     for file in all_files:
         filename = file.name
@@ -71,7 +71,7 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
                 right_dict[frame_num] = file
 
     # Match pairs by frame number
-    common_frames = sorted(set(left_dict.keys()) & set(right_dict.keys()))
+    common_frames: list[int] = sorted(set(left_dict.keys()) & set(right_dict.keys()))
 
     for frame_num in common_frames:
         left_images.append(left_dict[frame_num])
@@ -86,10 +86,10 @@ def prepare_calibration_data(
     left_images: List[Path],
     right_images: List[Path],
 ) -> Tuple[
-    List[npt.NDArray[np.float32]],
-    List[npt.NDArray[np.float32]],
-    List[npt.NDArray[np.float32]],
-    List[npt.NDArray[np.float32]],
+    list[npt.NDArray[np.float32]],
+    list[npt.NDArray[np.float32]],
+    list[npt.NDArray[np.float32]],
+    list[tuple[int, int]],
 ]:
     """
     Prepare object points and image points for stereo calibration.
@@ -131,12 +131,12 @@ def prepare_calibration_data(
 
         if left_ret and right_ret:
             obj_points.append(objp)
-            left_img_points.append(left_corners)
-            right_img_points.append(right_corners)
+            left_img_points.append(left_corners) # type: ignore
+            right_img_points.append(right_corners) # type: ignore
             valid_pairs.append((idx, idx))
             print(f"  Pair {idx}: ✓ Both images detected")
         else:
-            status = []
+            status: list[str] = []
             if not left_ret:
                 status.append("left failed")
             if not right_ret:
@@ -152,10 +152,10 @@ def prepare_calibration_data(
 def rectify_and_display(
     left_img: npt.NDArray[np.uint8],
     right_img: npt.NDArray[np.uint8],
-    left_map1: npt.NDArray,
-    left_map2: npt.NDArray,
-    right_map1: npt.NDArray,
-    right_map2: npt.NDArray,
+    left_map1: npt.NDArray[np.float32],
+    left_map2: npt.NDArray[np.float32],
+    right_map1: npt.NDArray[np.float32],
+    right_map2: npt.NDArray[np.float32],
     window_name: str = "Stereo Rectified Images",
     display: bool = True,
     save_vis_path: Optional[Path] = None,
@@ -200,16 +200,19 @@ def rectify_and_display(
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
+    left_rectified = np.asarray(left_rectified, dtype=np.uint8)
+    right_rectified = np.asarray(right_rectified, dtype=np.uint8)
+
     return left_rectified, right_rectified
 
 
 def display_undistorted_images(
-    left_img,
-    right_img,
-    left_mtx,
-    left_dist,
-    right_mtx,
-    right_dist,
+    left_img: npt.NDArray[np.uint8],
+    right_img: npt.NDArray[np.uint8],
+    left_mtx: npt.NDArray[np.float32],
+    left_dist: npt.NDArray[np.float32],
+    right_mtx: npt.NDArray[np.float32],
+    right_dist: npt.NDArray[np.float32],
 ):
     """
     Display the undistorted left and right images using their respective intrinsics.
@@ -250,7 +253,7 @@ def display_undistorted_images(
 
 def report_rectification_errors(
     all_rect_ids: list[str],
-    errors_per_image: npt.NDArray[np.float32],
+    errors_per_image: list[float],
     output_path: Path,
 ):
 
@@ -314,7 +317,7 @@ def main(args: CliArgs):
     image_size = (first_img.shape[1], first_img.shape[0])
 
     # Prepare calibration data
-    obj_points, left_img_points, right_img_points, valid_pairs = (
+    obj_points, left_img_points, right_img_points, _= (
         prepare_calibration_data(regular_chessboard, left_images, right_images)
     )
 
@@ -323,7 +326,7 @@ def main(args: CliArgs):
             f"Warning: Only {len(obj_points)} valid pairs found. At least 10 pairs are recommended for good calibration."
         )
 
-    stereo_calibration_output, rectification_output, rectification_maps_output = (
+    stereo_calibration_output, _, rectification_maps_output = (
         stereo_calibration_pipeline(
             obj_points,
             left_img_points,
@@ -340,7 +343,7 @@ def main(args: CliArgs):
     left_img = cv2.imread(str(left_images[0]))
     right_img = cv2.imread(str(right_images[0]))
 
-    if left_img is not None and right_img is not None:
+    if left_img is not None and right_img is not None: # type: ignore
         left_img = np.asarray(left_img, dtype=np.uint8)
         right_img = np.asarray(right_img, dtype=np.uint8)
 
@@ -366,9 +369,9 @@ def main(args: CliArgs):
 
     print("Saving rectified images...")
 
-    all_rect_corners_left = []
-    all_rect_corners_right = []
-    all_rect_ids = []
+    all_rect_corners_left: list[npt.NDArray[np.float32]] = []
+    all_rect_corners_right: list[npt.NDArray[np.float32]] = []
+    all_rect_ids: list[str] = []
     save_vis_path = args.output_path / "rect_vis"
     save_vis_path.mkdir(parents=True, exist_ok=True)
     for i in range(len(left_images)):
@@ -384,8 +387,8 @@ def main(args: CliArgs):
             )
 
         left_rectified, right_rectified = rectify_and_display(
-            left_img,
-            right_img,
+            left_img, # type: ignore
+            right_img, # type: ignore
             rectification_maps_output.left_map1,
             rectification_maps_output.left_map2,
             rectification_maps_output.right_map1,
@@ -399,8 +402,8 @@ def main(args: CliArgs):
         ret_right, corners_right, _ = regular_chessboard.detect_corners(right_rectified)
 
         if ret_left and ret_right:
-            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0))
-            all_rect_corners_right.append(np.expand_dims(corners_right, axis=0))
+            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0)) # type: ignore
+            all_rect_corners_right.append(np.expand_dims(corners_right, axis=0)) # type: ignore
             all_rect_ids.append(image_id)
 
     ## lrect_corners shape: (N_img, N_corners, 1, 2)
@@ -410,10 +413,10 @@ def main(args: CliArgs):
     ## Rectification error - Measure difference in y-direction
     ## For corresponding points.
     d = lrect_corners[:, :, :, 1] - rrect_corners[:, :, :, 1]
-    errors_per_image = []
+    errors_per_image: list[float] = []
 
     for idx in range(d.shape[0]):
-        img_error = np.mean(np.sqrt(np.square(d[idx])))
+        img_error = float(np.mean(np.sqrt(np.square(d[idx])))) # type: ignore
         errors_per_image.append(img_error)
         # print(f"Image {all_rect_ids[idx]} error: {img_error}")
 

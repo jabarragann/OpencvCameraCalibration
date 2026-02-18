@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional,  Tuple, cast
+from typing import Any, Optional, Sequence, Tuple 
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -11,14 +11,16 @@ class OpenCVCornerDetector(ABC):
     @abstractmethod
     def detect_corners(
         self, image: npt.NDArray[np.uint8]
-    ) -> Tuple[bool, Optional[npt.NDArray[np.float32]], Optional[npt.NDArray[np.int32]]]:
+    ) -> Tuple[
+        bool, Optional[npt.NDArray[np.float32]], Optional[npt.NDArray[np.int32]]
+    ]:
         # return bool, corners, corners_ids
 
         pass
 
     @abstractmethod
     def get_object_points(
-        self, corners: npt.NDArray[np.float32], ids: npt.NDArray[np.int32]
+        self, corners: Sequence[npt.NDArray[np.float32]], ids: npt.NDArray[np.int32]
     ) -> npt.NDArray[np.float32]:
         pass
 
@@ -29,7 +31,7 @@ class OpenCVChessboard(OpenCVCornerDetector):
     corners_per_column: int
     square_size: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.pattern_size = (self.corners_per_row, self.corners_per_column)
         self.obj_points = self.create_chessboard_points()
 
@@ -69,17 +71,17 @@ class OpenCVChessboard(OpenCVCornerDetector):
             corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             corners_ids = None
 
-            corners_f32: npt.NDArray[np.float32] = np.asarray(
-                corners, dtype=np.float32
-            )
-            return True, corners_f32, corners_ids 
+            corners_f32: npt.NDArray[np.float32] = np.asarray(corners, dtype=np.float32)
+            return True, corners_f32, corners_ids
 
         return False, None, None
 
     def get_object_points(
-        self, corners: npt.NDArray[np.float32], ids: npt.NDArray[np.int32]
+        self, corners: Sequence[npt.NDArray[np.float32]], ids: npt.NDArray[np.int32]
     ) -> npt.NDArray[np.float32]:
-        # parameters 'corners' and 'ids' are kept to keep a common interface with CharucoBoard
+        """
+        Parameters 'corners' and 'ids' are kept to keep a common interface with CharucoBoard
+        """
         return self.obj_points
 
 
@@ -91,7 +93,7 @@ class OpenCVCharucoBoard(OpenCVCornerDetector):
     square_length: float
     marker_length: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.board = cv2.aruco.CharucoBoard(
             (self.squares_in_x_dim, self.squares_in_y_dim),
             squareLength=self.square_length,
@@ -131,20 +133,21 @@ class OpenCVCharucoBoard(OpenCVCornerDetector):
 
     def get_object_points(
         self,
-        corners: npt.NDArray[np.float32],
+        corners: Sequence[npt.NDArray[np.float32]],
         ids: npt.NDArray[np.int32],
     ) -> npt.NDArray[np.float32]:
 
-        obj_points , img_points = self.board.matchImagePoints( # type: ignore
-            corners, #type: ignore
-            ids, #type: ignore
+        obj_points, img_points = self.board.matchImagePoints(
+            corners,
+            ids,
         )
 
-        obj_points = cast(npt.NDArray[np.float32], obj_points)
-        img_points = cast(npt.NDArray[np.float32], img_points)
 
         obj_points = np.asarray(obj_points, dtype=np.float32)
-        # img_points = np.asarray(img_points, dtype=np.float32)
+        img_points = np.asarray(img_points, dtype=np.float32)
+
+        # obj_points = cast(npt.NDArray[np.float32], obj_points)
+        # img_points = cast(npt.NDArray[np.float32], img_points)
 
         return obj_points
 

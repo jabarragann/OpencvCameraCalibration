@@ -11,7 +11,7 @@ python -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera \
     --corners_per_board_row 8 \
     --corners_per_board_column 6 \
     --square_size 0.004 \
-    --output_path output/calib_dvrksi_020326/calib_results2_stereo \
+    --output_path output/calib_dvrksi_020326/calib_results9_stereo \
     --distortion_flags CALIB_FIX_K3 CALIB_ZERO_TANGENT_DIST \
     --stereo_flags CALIB_FIX_INTRINSIC
 
