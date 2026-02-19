@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+from typing import Any
 import yaml
 import numpy as np
 import cv2
@@ -149,7 +151,10 @@ def modify_string_for_yaml(formated_arry: list[str]):
 
 
 def create_yaml_str_single_cam(
-    image_size: tuple[int, int], mtx: npt.NDArray[np.float64], dist: npt.NDArray[np.float64], camera_name: str
+    image_size: tuple[int, int],
+    mtx: npt.NDArray[np.float64],
+    dist: npt.NDArray[np.float64],
+    camera_name: str,
 ):
     mtx_str_data = modify_string_for_yaml(format_array(mtx))
 
@@ -322,6 +327,7 @@ def save_calibration_parameters_regular(
     with open(filename, "w") as f:
         yaml.dump(params_dict, f)
 
+
 def save_calibration_parameters_charuco(
     filename: Path,
     aruco_dict: str,
@@ -343,6 +349,46 @@ def save_calibration_parameters_charuco(
 
     with open(filename, "w") as f:
         yaml.dump(params_dict, f)
+
+
+def convert_yaml_to_json(calibration_dir: Path) -> None:
+    def matrix2list(
+        matrix: dict[str, Any],
+    ) -> list[float]:
+
+        rows: int = matrix["rows"]
+        cols: int = matrix["cols"]
+
+        result = np.zeros((rows, cols), np.float64)
+        for idx, v in enumerate(matrix["data"]):
+            r = idx // cols
+            c = idx - cols * r
+            result[r, c] = float(v)
+
+        return result.tolist()
+
+    def load_camera(file: Path):
+        with open(file, "r") as f:
+            cal = yaml.safe_load(f)
+
+        camera = {
+            "image_width": cal["image_width"],
+            "image_height": cal["image_height"],
+            "intrinsic": matrix2list(cal["camera_matrix"]),
+            "distortion": matrix2list(cal["distortion_coefficients"])[0],
+            "rectification": matrix2list(cal["rectification_matrix"]),
+            "projection": matrix2list(cal["projection_matrix"]),
+        }
+
+        return camera
+
+    left_cal = load_camera(calibration_dir / "left.yaml")
+    right_cal = load_camera(calibration_dir / "right.yaml")
+    calibration = {"left_camera": left_cal, "right_camera": right_cal}
+
+    with open(calibration_dir / "calibration_offline.json", "w") as f:
+        json.dump(calibration, f, indent=4)
+        f.write("\n")
 
 
 if __name__ == "__main__":

@@ -260,7 +260,7 @@ def report_rectification_errors(
     print("Images with big errors:")
     images_to_filter:list[str] = []
     for idx, err in zip(all_rect_ids, errors_per_image):
-        if err > 1.0:
+        if err > 1.5:
             print(f"Image {idx} error: {err}")
             images_to_filter.append(idx)
 

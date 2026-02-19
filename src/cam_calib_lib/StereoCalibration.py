@@ -4,6 +4,7 @@ from typing import Sequence
 import numpy as np
 import numpy.typing as npt
 import cv2
+import logging
 
 from cam_calib_lib.CalibrationErrorMetrics import (
     calculate_reprojection_error,
@@ -14,6 +15,7 @@ from cam_calib_lib.Utils import (
     save_calibration_yaml_stereo_cam_additional,
 )
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class StereoCalibrationOutput:
@@ -77,7 +79,7 @@ def save_calibration_results(
     }
     np.save(str(output_path / "metadata.npy"), metadata)
 
-    print(f"\nCalibration results saved to {output_path}")
+    logger.debug(f"Calibration results saved to {output_path}")
 
 
 def perform_stereo_calibration(
@@ -109,14 +111,14 @@ def perform_stereo_calibration(
         (left_camera_matrix, left_dist_coeffs, right_camera_matrix, right_dist_coeffs,
          R, T, E, F, reprojection_error)
     """
-    print("\nPerforming stereo calibration...")
+    logger.info("Performing stereo calibration...")
 
     # First calibrate individual cameras
 
     # The bugging flags: Only two radial distortion coefficients.
     # single_calib_flags = cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
 
-    print("Calibrating left camera...")
+    logger.debug("Calibrating left camera...")
     ret_left, left_camera_matrix, left_dist_coeffs, left_rvecs, left_tvecs = (
         cv2.calibrateCamera(
             obj_points,
@@ -128,7 +130,7 @@ def perform_stereo_calibration(
         )
     )
 
-    print("Calibrating right camera...")
+    logger.debug("Calibrating right camera...")
     ret_right, right_camera_matrix, right_dist_coeffs, right_rvecs, right_tvecs = (
         cv2.calibrateCamera(
             obj_points,
@@ -148,7 +150,7 @@ def perform_stereo_calibration(
     # And for mock or microscope: cv2.CALIB_USE_INTRINSIC_GUESS
     # stereo_calibration_flags = cv2.CALIB_USE_INTRINSIC_GUESS | cv2.CALIB_FIX_K3 | cv2.CALIB_ZERO_TANGENT_DIST
 
-    print("Performing stereo calibration...")
+    logger.debug("Performing stereo calibration...")
     (
         ret_stereo,
         left_camera_matrix,
@@ -197,16 +199,16 @@ def perform_stereo_calibration(
         right_dist_coeffs,
     )
 
-    print("\nMy own error statistics")
-    print(f"Epipolar error stereo: {stats_stereo['mean_px']:.4f} pixels")
-    print(f"Epipolar error 95th percentile: {stats_stereo['p95_px']:.4f} pixels")
-    print(f"Reprojection error left camera: {error_left_camera:.4f} pixels")
-    print(f"Reprojection error right camera: {error_right_camera:.4f} pixels")
+    logger.debug("My own error statistics")
+    logger.debug(f"Epipolar error stereo: {stats_stereo['mean_px']:.4f} pixels")
+    logger.debug(f"Epipolar error 95th percentile: {stats_stereo['p95_px']:.4f} pixels")
+    logger.debug(f"Reprojection error left camera: {error_left_camera:.4f} pixels")
+    logger.debug(f"Reprojection error right camera: {error_right_camera:.4f} pixels")
 
-    print("\nOpencv Returned errors")
-    print(f"Reprojection error left camera: {ret_left:.4f} pixels")
-    print(f"Reprojection error right camera: {ret_right:.4f} pixels")
-    print(f"Reprojection error stereo: {ret_stereo:.4f} pixels")
+    logger.debug("Opencv Returned errors")
+    logger.debug(f"Reprojection error left camera: {ret_left:.4f} pixels")
+    logger.debug(f"Reprojection error right camera: {ret_right:.4f} pixels")
+    logger.debug(f"Reprojection error stereo: {ret_stereo:.4f} pixels")
 
     # print(f"\nLeft camera matrix:\n{left_camera_matrix}")
     # print(f"\nRight camera matrix:\n{right_camera_matrix}")
@@ -273,7 +275,7 @@ def compute_rectification_maps(
     Returns:
         (left_map1, left_map2, right_map1, right_map2, left_roi, right_roi)
     """
-    print("\nComputing rectification maps...")
+    logger.debug("Computing rectification maps...")
 
     # Compute rectification maps
     left_map1, left_map2 = cv2.initUndistortRectifyMap(
