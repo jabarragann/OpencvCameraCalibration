@@ -37,8 +37,6 @@ class CliArgs(Tap):
     left_topic: str = "/dvrk_video/left/image_raw"
     right_topic: str = "/dvrk_video/right/image_raw"
     fps: int = 30
-    width: int = 1920
-    height: int = 1080
 
 
 def start_ffmpeg(output_path, width, height, fps):
@@ -88,12 +86,10 @@ def main(args: CliArgs):
     right_ts = None
 
     ## ffmpeg processes
-    left_writer_proc = start_ffmpeg(
-        str(args.output_path / "left.mp4"), args.width, args.height, args.fps
-    )
-    right_writer_proc = start_ffmpeg(
-        str(args.output_path / "right.mp4"), args.width, args.height, args.fps
-    )
+    left_writer_proc = None
+    right_writer_proc = None
+
+    initialize_ffmpeg_process = False
 
     while reader.has_next():
         topic, data, _ = reader.read_next()
@@ -110,6 +106,20 @@ def main(args: CliArgs):
 
         # Once both frames are available → commit frame
         if left_frame is not None and right_frame is not None:
+
+            if not initialize_ffmpeg_process:
+                width = left_frame.shape[1]
+                height = left_frame.shape[0]
+
+                left_writer_proc = start_ffmpeg(
+                    str(args.output_path / "left.mp4"), width, height, args.fps
+                )
+                right_writer_proc = start_ffmpeg(
+                    str(args.output_path / "right.mp4"), width, height, args.fps
+                )
+
+                initialize_ffmpeg_process = True
+
             left_writer_proc.stdin.write(left_frame.tobytes())  # type: ignore
             right_writer_proc.stdin.write(right_frame.tobytes())  # type: ignore
             timestamps.append([frame_idx, left_ts, right_ts])
