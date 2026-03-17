@@ -394,7 +394,7 @@ def main(args: CliArgs):
             rectification_maps_output.right_map1,
             rectification_maps_output.right_map2,
             display=False,
-            save_vis_path=save_vis_path / f"rectified_stereo_pair_{i}.png",
+            save_vis_path=save_vis_path / f"rectified_stereo_pair_{i:03d}.png",
         )
 
         ## Calculate corners again to measure rectification error

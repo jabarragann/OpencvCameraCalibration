@@ -6,11 +6,11 @@ pydebug() {
     python -m debugpy --listen 5678 --wait-for-client "$@"
 }
 python -m cam_calib_lib.scripts.calibration.stereo_calib_refinement \
-    --images_path output/surpass_dvrksi/stereo_calib_dvrksi_2026_01_22/calibration_data \
+    --images_path output/surpass_dvrksi/stereo_calib_dvrksi_2026_03_03/calibration_data \
     --corners_per_board_row 8 \
     --corners_per_board_column 6 \
     --square_size 0.004 \
-    --output_path output/surpass_dvrksi/stereo_calib_dvrksi_2026_01_22/calib_results1_stereo_refinement \
+    --output_path output/surpass_dvrksi/stereo_calib_dvrksi_2026_03_03/calib_results1_stereo_refinement \
     --distortion_flags CALIB_FIX_K3 CALIB_ZERO_TANGENT_DIST \
     --stereo_flags CALIB_FIX_INTRINSIC
 
