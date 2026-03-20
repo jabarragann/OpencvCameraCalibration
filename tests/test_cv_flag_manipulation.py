@@ -1,9 +1,10 @@
+import cv2
+
 from cam_calib_lib.ArgumentParsers import (
     aruco_dict_from_string_string_list,
-    cv2_flag_from_string,
     compose_cv2_flags,
+    cv2_flag_from_string,
 )
-import cv2
 
 
 def test_aruco_dict_from_string_list():

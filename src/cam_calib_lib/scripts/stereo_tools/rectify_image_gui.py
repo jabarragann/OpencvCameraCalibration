@@ -1,16 +1,18 @@
-from pathlib import Path
+import sys
 import traceback
+from pathlib import Path
+
 import cv2
 import numpy as np
-import sys
-
 from tap import Tap
 
 from cam_calib_lib.Utils import load_stereo_camera_calib
 
+
 def pretty_matrix(mat, title):
     np.set_printoptions(precision=3, suppress=True, floatmode="fixed")
     print(f"{title}:\n{mat}\n")
+
 
 class ImageRectificationGUI:
     def __init__(self, left_image_path, right_image_path, stereo_calib_path):
@@ -157,7 +159,7 @@ class ImageRectificationGUI:
 
         # Display
         cv2.imshow(self.window_name, display)
-    
+
     def print_projection_matrices(self):
         pretty_matrix(self.P1, "Left Projection Matrix")
         pretty_matrix(self.P2, "Right Projection Matrix")
@@ -241,22 +243,23 @@ class CliArgs(Tap):
     calib_path: Path
 
     def configure(self):
-        self.add_argument("-l","--left-image-path", type=Path, required=True)
-        self.add_argument("-r","--right-image-path", type=Path, required=True)
-        self.add_argument("-c","--calib-path", type=Path, required=True)
+        self.add_argument("-l", "--left-image-path", type=Path, required=True)
+        self.add_argument("-r", "--right-image-path", type=Path, required=True)
+        self.add_argument("-c", "--calib-path", type=Path, required=True)
+
 
 def main():
     cli_args = CliArgs().parse_args()
 
-    assert cli_args.left_image_path.exists(), (
-        f"Left image path does not exist: {cli_args.left_image_path}"
-    )
-    assert cli_args.right_image_path.exists(), (
-        f"Right image path does not exist: {cli_args.right_image_path}"
-    )
-    assert cli_args.calib_path.exists(), (
-        f"Calibration path does not exist: {cli_args.calib_path}"
-    )
+    assert (
+        cli_args.left_image_path.exists()
+    ), f"Left image path does not exist: {cli_args.left_image_path}"
+    assert (
+        cli_args.right_image_path.exists()
+    ), f"Right image path does not exist: {cli_args.right_image_path}"
+    assert (
+        cli_args.calib_path.exists()
+    ), f"Calibration path does not exist: {cli_args.calib_path}"
 
     try:
         gui = ImageRectificationGUI(

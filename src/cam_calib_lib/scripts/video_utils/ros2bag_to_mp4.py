@@ -18,17 +18,16 @@ wc -l output/timestamps.csv  <-- Change path
 
 """
 
-import os
 import csv
+import os
+import subprocess
 from pathlib import Path
-from cv_bridge import CvBridge
 
-from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions
+from cv_bridge import CvBridge
 from rclpy.serialization import deserialize_message
+from rosbag2_py import ConverterOptions, SequentialReader, StorageOptions
 from rosidl_runtime_py.utilities import get_message
 from tap import Tap
-
-import subprocess
 
 
 class CliArgs(Tap):
@@ -46,13 +45,14 @@ def start_ffmpeg(output_path, width, height, fps):
         "-pix_fmt", "bgr24",
         "-s", f"{width}x{height}",
         "-r", str(fps), "-i", "pipe:0",
-        "-an", "-c:v", "libx264", 
+        "-an", "-c:v", "libx264",
         "-preset", "slow", "-crf", "18", "-pix_fmt",
         "yuv420p", "-vsync", "cfr", "-x264-params", "keyint=1",
         output_path,
     ]
     # fmt: on
     return subprocess.Popen(cmd, stdin=subprocess.PIPE)
+
 
 def main(args: CliArgs):
     assert isinstance(args.bag_path, Path)

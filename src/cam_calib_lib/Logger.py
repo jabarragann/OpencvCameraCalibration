@@ -1,6 +1,7 @@
 import json
 import logging.config
 from pathlib import Path
+
 import numpy as np
 
 ## Numpy print options
@@ -16,5 +17,3 @@ def setup_logging_from_json(config_file: Path, log_output_file: Path):
     logger_config_dict = json.load(open(config_file))
     logger_config_dict["handlers"]["file_handler"]["filename"] = str(log_output_file)
     logging.config.dictConfig(logger_config_dict)
-
-

@@ -1,19 +1,20 @@
 from pathlib import Path
-import cv2
-from tap import Tap
-import numpy as np
-from cam_calib_lib.CalibrationErrorMetrics import calculate_reprojection_error
-from cam_calib_lib.StereoCalibration import compute_rectification_maps
 
-from cam_calib_lib.Utils import load_camera_calib
+import cv2
+import numpy as np
+from tap import Tap
+
+from cam_calib_lib.CalibrationErrorMetrics import calculate_reprojection_error
+from cam_calib_lib.OpencvBoards import OpenCVChessboard, OpenCVCornerDetector
 from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     load_stereo_images,
     rectify_and_display,
 )
-from cam_calib_lib.OpencvBoards import OpenCVChessboard, OpenCVCornerDetector
 from cam_calib_lib.scripts.calibration.test_camera_calibration import (
     calculate_rvecs_tvecs,
 )
+from cam_calib_lib.StereoCalibration import compute_rectification_maps
+from cam_calib_lib.Utils import load_camera_calib
 
 
 class CliArgs(Tap):
@@ -27,7 +28,7 @@ class CliArgs(Tap):
 
 
 def main(args: CliArgs):
-    debug = False 
+    debug = False
     params_dict_left = load_camera_calib(args.left_calibration_file)
     parms_dict_right = load_camera_calib(args.right_calibration_file)
 
@@ -113,7 +114,6 @@ def main(args: CliArgs):
     # )
     # print(f"Reprojection error (the wrong way) {left_error:.4f} pixels")
 
-    
     # rvecs_left, tvecs_left = calculate_rvecs_tvecs(
     #     all_obj_points, all_img_left_points, projection_matrix_left[:3, :3], np.zeros_like(dist_left)
     # )

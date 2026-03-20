@@ -1,20 +1,20 @@
 from pathlib import Path
 
 import cv2
+import numpy as np
+import numpy.typing as npt
+
 from cam_calib_lib import ArgumentParsers as calib_args
+from cam_calib_lib import Utils as calib_utils
 from cam_calib_lib.ArgumentParsers import CameraCalibrationCharucoArgs
 from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
-from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
-from cam_calib_lib.Utils import index_to_bgr
-from cam_calib_lib import Utils as calib_utils
 from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     display_undistorted_images,
     load_stereo_images,
     rectify_and_display,
 )
-
-import numpy as np
-import numpy.typing as npt
+from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
+from cam_calib_lib.Utils import index_to_bgr
 
 
 class CliArgs(CameraCalibrationCharucoArgs):
@@ -85,12 +85,12 @@ def prepare_stereo_charuco_data(
                     right_corners_filtered, right_corners_ids_filtered
                 )
 
-                assert objp_left.shape == objp_right.shape, (
-                    "Object point arrays have different shapes"
-                )
-                assert np.allclose(objp_left, objp_right), (
-                    "Object points for left and right images differ"
-                )
+                assert (
+                    objp_left.shape == objp_right.shape
+                ), "Object point arrays have different shapes"
+                assert np.allclose(
+                    objp_left, objp_right
+                ), "Object points for left and right images differ"
 
                 obj_points.append(objp_left)
                 left_img_points.append(left_corners_filtered)

@@ -111,7 +111,7 @@ if __name__ == "__main__":
     run with
 
     python video_to_frames.py --input-video . --output-dir ../../ run
-    python video_to_frames.py --input-video . --output-dir ../../ show-fps 
+    python video_to_frames.py --input-video . --output-dir ../../ show-fps
 
     see: https://click.palletsprojects.com/en/stable/api/#context
     """

@@ -1,17 +1,18 @@
 from pathlib import Path
+
 import cv2
-from tap import Tap
-import yaml
 import numpy as np
+import yaml
+from tap import Tap
 
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
-from cam_calib_lib.Utils import load_camera_calib
 from cam_calib_lib.scripts.calibration.calibrate_single_camera import (
     calculate_reprojection_error,
     display_projected_corners,
     load_camera_images,
     prepare_calibration_data,
 )
+from cam_calib_lib.Utils import load_camera_calib
 
 
 class CliArgs(Tap):
@@ -24,7 +25,7 @@ class CliArgs(Tap):
 
 
 def load_camera_calibration(yaml_path):
-    with open(yaml_path, "r") as f:
+    with open(yaml_path) as f:
         calib = yaml.safe_load(f)
 
     # Camera intrinsic matrix

@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import List, Tuple
+
 import cv2
 import numpy as np
 import numpy.typing as npt
+from pyprojroot.here import here
+
 from cam_calib_lib.scripts.simple_demos.CornerDetector import CharucoBoard
 from cam_calib_lib.Utils import save_calibration_yaml_single_cam
-from pyprojroot.here import here
 
 
 def load_data(
@@ -47,9 +49,7 @@ def get_all_object_points(
             print(f"No Charuco corners detected for image {idx}")
             continue
 
-        obj_points = charuco_board.get_object_points(
-            charuco_corners, charuco_ids
-        )
+        obj_points = charuco_board.get_object_points(charuco_corners, charuco_ids)
         img_points = charuco_corners
 
         all_obj_poinst.append(obj_points)
@@ -73,7 +73,7 @@ def calculate_reprojection_error(
 ) -> float:
     mean_error = 0
     for i in range(len(object_points)):
-        imgpoints2, _ = cv2.projectPoints(  ## Assuming distortion
+        imgpoints2, _ = cv2.projectPoints(  # Assuming distortion
             object_points[i], rvecs[i], tvecs[i], mtx, dist
         )
 

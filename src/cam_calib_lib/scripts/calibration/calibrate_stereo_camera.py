@@ -3,23 +3,25 @@ Stereo camera calibration using regular chessboard pattern.
 Performs stereo calibration and provides rectification functionality.
 """
 
+import logging
 import re
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
+
 import cv2
 import numpy as np
 import numpy.typing as npt
+from pyprojroot.here import here  # type: ignore
 from tap import Tap
+
+from cam_calib_lib import ArgumentParsers as calib_args
+from cam_calib_lib import Utils as calib_utils
+from cam_calib_lib.Logger import setup_logging_from_json
 from cam_calib_lib.OpencvBoards import OpenCVChessboard
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
-from cam_calib_lib import Utils as calib_utils
-from cam_calib_lib import ArgumentParsers as calib_args
-from cam_calib_lib.Logger import setup_logging_from_json
-
-from pyprojroot.here import here  # type: ignore
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 class CliArgs(Tap):
     images_path: Path
@@ -31,13 +33,13 @@ class CliArgs(Tap):
     stereo_flags: list[str] = ["CALIB_FIX_INTRINSIC"]
 
     def configure(self):
-        self.add_argument( # type: ignore 
+        self.add_argument(  # type: ignore
             "--distortion_flags",
             help="Extra configuration options for distortion model."
             + " Default: [CALIB_FIX_K3, CALIB_ZERO_TANGENT_DIST]",
             nargs="+",
         )
-        self.add_argument( # type: ignore
+        self.add_argument(  # type: ignore
             "--stereo_flags",
             help=(
                 "Extra configuration options for stereo calibration."
@@ -136,8 +138,8 @@ def prepare_calibration_data(
 
         if left_ret and right_ret:
             obj_points.append(objp)
-            left_img_points.append(left_corners) # type: ignore
-            right_img_points.append(right_corners) # type: ignore
+            left_img_points.append(left_corners)  # type: ignore
+            right_img_points.append(right_corners)  # type: ignore
             valid_pairs.append((idx, idx))
             logger.debug(f"  Pair {idx}: ✓ Both images detected")
         else:
@@ -263,7 +265,7 @@ def report_rectification_errors(
 ):
 
     logger.info("Images with big errors:")
-    images_to_filter:list[str] = []
+    images_to_filter: list[str] = []
     for idx, err in zip(all_rect_ids, errors_per_image):
         if err > 1.5:
             logger.info(f"Image {idx} error: {err}")
@@ -322,8 +324,8 @@ def main(args: CliArgs):
     image_size = (first_img.shape[1], first_img.shape[0])
 
     # Prepare calibration data
-    obj_points, left_img_points, right_img_points, _= (
-        prepare_calibration_data(regular_chessboard, left_images, right_images)
+    obj_points, left_img_points, right_img_points, _ = prepare_calibration_data(
+        regular_chessboard, left_images, right_images
     )
 
     if len(obj_points) < 10:
@@ -348,7 +350,7 @@ def main(args: CliArgs):
     left_img = cv2.imread(str(left_images[0]))
     right_img = cv2.imread(str(right_images[0]))
 
-    if left_img is not None and right_img is not None: # type: ignore
+    if left_img is not None and right_img is not None:  # type: ignore
         left_img = np.asarray(left_img, dtype=np.uint8)
         right_img = np.asarray(right_img, dtype=np.uint8)
 
@@ -392,8 +394,8 @@ def main(args: CliArgs):
             )
 
         left_rectified, right_rectified = rectify_and_display(
-            left_img, # type: ignore
-            right_img, # type: ignore
+            left_img,  # type: ignore
+            right_img,  # type: ignore
             rectification_maps_output.left_map1,
             rectification_maps_output.left_map2,
             rectification_maps_output.right_map1,
@@ -407,8 +409,8 @@ def main(args: CliArgs):
         ret_right, corners_right, _ = regular_chessboard.detect_corners(right_rectified)
 
         if ret_left and ret_right:
-            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0)) # type: ignore
-            all_rect_corners_right.append(np.expand_dims(corners_right, axis=0)) # type: ignore
+            all_rect_corners_left.append(np.expand_dims(corners_left, axis=0))  # type: ignore
+            all_rect_corners_right.append(np.expand_dims(corners_right, axis=0))  # type: ignore
             all_rect_ids.append(image_id)
 
     ## lrect_corners shape: (N_img, N_corners, 1, 2)
@@ -421,7 +423,7 @@ def main(args: CliArgs):
     errors_per_image: list[float] = []
 
     for idx in range(d.shape[0]):
-        img_error = float(np.mean(np.sqrt(np.square(d[idx])))) # type: ignore
+        img_error = float(np.mean(np.sqrt(np.square(d[idx]))))  # type: ignore
         errors_per_image.append(img_error)
         # logger.debug(f"Image {all_rect_ids[idx]} error: {img_error}")
 

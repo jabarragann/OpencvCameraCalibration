@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 from typing import Any
-import yaml
-import numpy as np
+
 import cv2
+import numpy as np
 import numpy.typing as npt
+import yaml
 
 
 def index_to_bgr(idx: int, total: int) -> tuple[int, int, int]:
@@ -21,7 +22,7 @@ def load_camera_calib(filename: Path):
 
     assert isinstance(filename, Path), "Filename must be a Path object"
     assert filename.suffix == ".yaml", "Filename must be a YAML file"
-    with open(filename, "r") as f:
+    with open(filename) as f:
         calib_data = yaml.safe_load(f)
 
     image_width = calib_data["image_width"]
@@ -62,7 +63,7 @@ def load_camera_calib(filename: Path):
 def load_stereo_camera_calib(filename: Path):
     assert isinstance(filename, Path), "Filename must be a Path object"
     assert filename.suffix == ".yaml", "Filename must be a YAML file"
-    with open(filename, "r") as f:
+    with open(filename) as f:
         calib_data = yaml.safe_load(f)
 
     image_width = calib_data["image_width"]
@@ -368,7 +369,7 @@ def convert_yaml_to_json(calibration_dir: Path) -> None:
         return result.tolist()
 
     def load_camera(file: Path):
-        with open(file, "r") as f:
+        with open(file) as f:
             cal = yaml.safe_load(f)
 
         camera = {

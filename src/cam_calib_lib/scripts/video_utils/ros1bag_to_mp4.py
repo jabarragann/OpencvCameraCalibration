@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
+import os
+import signal
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-import rospy
-import subprocess
-import os
-import signal
 
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 import cv2
-
 import message_filters
+import rospy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 from tap import Tap
 
 
@@ -24,7 +23,7 @@ def start_ffmpeg(output_path, width, height, fps):
     #     "-pix_fmt", "bgr24",
     #     "-s", f"{width}x{height}",
     #     "-r", str(fps), "-i", "pipe:0",
-    #     "-an", "-c:v", "libx264", 
+    #     "-an", "-c:v", "libx264",
     #     "-preset", "slow", "-crf", "18", "-pix_fmt",
     #     "yuv420p", "-vsync", "cfr", "-x264-params", "keyint=1",
     #     output_path,
@@ -111,7 +110,7 @@ class StereoBagExtractor2:
         self.left_writer_proc = start_ffmpeg(
             str(args.output_dir / "left.avi"), width, height, fps
         )
-    
+
         self.right_writer_proc = start_ffmpeg(
             str(args.output_dir / "right.avi"), width, height, fps
         )

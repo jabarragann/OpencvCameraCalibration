@@ -4,12 +4,13 @@ Compare against ground truth frames to ensure no desyncronization with video enc
 
 """
 
-from tap import Tap
 from pathlib import Path
+
 import cv2
 import numpy as np
 import numpy.typing as npt
 from natsort import natsorted
+from tap import Tap
 
 
 class CliArgs(Tap):
@@ -61,7 +62,9 @@ def main(args: CliArgs):
         for frame_path in extracted_frames
         if frame_path.name in gt_frames_names
     ]
-    extracted_frames_names = [frame_path.name for frame_path in extracted_frames_filtered]
+    extracted_frames_names = [
+        frame_path.name for frame_path in extracted_frames_filtered
+    ]
 
     gt_frames_filtered = [
         frame_path
@@ -76,7 +79,9 @@ def main(args: CliArgs):
     for frame_idx, (gt_frame_path, extracted_frame_path) in enumerate(
         zip(gt_frames_filtered, extracted_frames_filtered)
     ):
-        print(f"Comparing frame {frame_idx}: {gt_frame_path.name} and {extracted_frame_path.name}")
+        print(
+            f"Comparing frame {frame_idx}: {gt_frame_path.name} and {extracted_frame_path.name}"
+        )
         match, diff = verify_frame(
             cv2.imread(gt_frame_path), cv2.imread(extracted_frame_path)
         )

@@ -3,22 +3,27 @@ Performs stereo calibration and removes images with high rectification errors.
 Repeat until converging to a set of images with low rectification errors.
 """
 
-from dataclasses import dataclass, field
+import logging
 import re
-from pathlib import Path
 import shutil
-from typing import List, Tuple, Optional
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Optional, Tuple
+
 import cv2
 import numpy as np
 import numpy.typing as npt
-from tap import Tap
-from cam_calib_lib.OpencvBoards import OpenCVChessboard
-from cam_calib_lib.StereoCalibration import RectificationMapsOutput, stereo_calibration_pipeline
-from cam_calib_lib import Utils as calib_utils
-from cam_calib_lib import ArgumentParsers as calib_args
-from cam_calib_lib.Logger import setup_logging_from_json
-import logging
 from pyprojroot.here import here  # type: ignore
+from tap import Tap
+
+from cam_calib_lib import ArgumentParsers as calib_args
+from cam_calib_lib import Utils as calib_utils
+from cam_calib_lib.Logger import setup_logging_from_json
+from cam_calib_lib.OpencvBoards import OpenCVChessboard
+from cam_calib_lib.StereoCalibration import (
+    RectificationMapsOutput,
+    stereo_calibration_pipeline,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -222,9 +227,7 @@ def prepare_calibration_data(
             logger.warning(f"  Pair {image_id}: ✗ {' and '.join(status)}")
             global_variables.global_images_to_filter.append(image_id)
 
-    logger.info(
-        f"Detected corners in {len(obj_points)}/{len(left_images)} pairs"
-    )
+    logger.info(f"Detected corners in {len(obj_points)}/{len(left_images)} pairs")
     return obj_points, left_img_points, right_img_points
 
 
@@ -311,7 +314,8 @@ def report_rectification_errors(
     logger.info(f"Rectified error max: {np.max(rectified_error)}")
     logger.info(f"Rectified error min: {np.min(rectified_error)}")
     logger.info(f"95% confidence interval: {np.percentile(rectified_error, 95)}")
- 
+
+
 def get_valid_images():
     obj_points: List[npt.NDArray[np.float32]] = []
     left_img_points: List[npt.NDArray[np.float32]] = []
@@ -326,7 +330,11 @@ def get_valid_images():
     return obj_points, left_img_points, right_img_points
 
 
-def calculate_final_rectification_error(rectification_maps_output: RectificationMapsOutput, regular_chessboard: OpenCVChessboard, images_path: Path):
+def calculate_final_rectification_error(
+    rectification_maps_output: RectificationMapsOutput,
+    regular_chessboard: OpenCVChessboard,
+    images_path: Path,
+):
     left_images, right_images = load_stereo_images(images_path)
 
     error_list: list[float] = []
@@ -348,12 +356,8 @@ def calculate_final_rectification_error(rectification_maps_output: Rectification
         )
 
         ## Calculate corners again to measure rectification error
-        ret_left, corners_left, _ = regular_chessboard.detect_corners(
-            left_rectified
-        )
-        ret_right, corners_right, _ = regular_chessboard.detect_corners(
-            right_rectified
-        )
+        ret_left, corners_left, _ = regular_chessboard.detect_corners(left_rectified)
+        ret_right, corners_right, _ = regular_chessboard.detect_corners(right_rectified)
 
         if ret_left and ret_right:
             assert corners_left is not None
@@ -504,9 +508,7 @@ def main(args: CliArgs):
                     global_variables.global_images_to_filter.append(image_id)
                     global_variables.global_list_of_valid_images.remove(image_id)
             else:
-                logger.debug(
-                    f"failed to detect corners in rectified image {image_id}"
-                )
+                logger.debug(f"failed to detect corners in rectified image {image_id}")
                 global_variables.global_images_to_filter.append(image_id)
                 global_variables.global_list_of_valid_images.remove(image_id)
 
@@ -516,7 +518,7 @@ def main(args: CliArgs):
             args.images_path / "images_to_filter",
         )
         logger.info(f"finished iteration {iteration}")
-    
+
     assert rectification_maps_output is not None
 
     logger.info("Final evaluation")
@@ -527,6 +529,7 @@ def main(args: CliArgs):
     )
 
     calib_utils.convert_yaml_to_json(args.output_path)
+
 
 if __name__ == "__main__":
     args = CliArgs().parse_args()

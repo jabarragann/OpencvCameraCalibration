@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Tuple 
+from typing import Any, Optional, Sequence, Tuple
+
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +41,9 @@ class OpenCVChessboard(OpenCVCornerDetector):
 
         objp[:, :2] = np.mgrid[
             0 : self.corners_per_row, 0 : self.corners_per_column
-        ].T.reshape(-1, 2)  # RIGHT
+        ].T.reshape(
+            -1, 2
+        )  # RIGHT
 
         objp *= self.square_size
 
@@ -141,7 +144,6 @@ class OpenCVCharucoBoard(OpenCVCornerDetector):
             corners,
             ids,
         )
-
 
         obj_points = np.asarray(obj_points, dtype=np.float32)
         img_points = np.asarray(img_points, dtype=np.float32)

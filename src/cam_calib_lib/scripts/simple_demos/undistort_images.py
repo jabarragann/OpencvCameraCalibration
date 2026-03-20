@@ -1,8 +1,9 @@
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
-from cam_calib_lib.Utils import load_camera_calib
+from matplotlib import pyplot as plt
 from pyprojroot.here import here
+
+from cam_calib_lib.Utils import load_camera_calib
 
 
 def replace_black_with_blue(img: np.ndarray) -> np.ndarray:

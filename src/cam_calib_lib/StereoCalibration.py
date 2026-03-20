@@ -1,10 +1,11 @@
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
+
+import cv2
 import numpy as np
 import numpy.typing as npt
-import cv2
-import logging
 
 from cam_calib_lib.CalibrationErrorMetrics import (
     calculate_reprojection_error,
@@ -16,6 +17,7 @@ from cam_calib_lib.Utils import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class StereoCalibrationOutput:

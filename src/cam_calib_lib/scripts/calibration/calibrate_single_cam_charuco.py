@@ -1,12 +1,13 @@
-import cv2
-from cam_calib_lib.ArgumentParsers import CameraCalibrationCharucoArgs
 from pathlib import Path
+
+import cv2
+import numpy as np
+import numpy.typing as npt
+
+from cam_calib_lib.ArgumentParsers import CameraCalibrationCharucoArgs
 
 # from cam_calib_lib.CornerDetector import CharucoBoard
 from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
-import numpy.typing as npt
-import numpy as np
-
 from cam_calib_lib.scripts.calibrate_camera import calculate_reprojection_error
 from cam_calib_lib.scripts.calibration.calibrate_single_camera import (
     display_projected_corners,
@@ -88,9 +89,10 @@ def main(args: CliArgs):
     assert isinstance(args.images_path, Path)
     assert isinstance(args.output_path, Path)
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
-    assert args.camera_name in ["left", "right"], (
-        f"Camera must be 'left' or 'right', got '{args.camera_name}'"
-    )
+    assert args.camera_name in [
+        "left",
+        "right",
+    ], f"Camera must be 'left' or 'right', got '{args.camera_name}'"
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
 

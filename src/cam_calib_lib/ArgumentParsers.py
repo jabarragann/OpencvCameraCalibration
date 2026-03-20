@@ -1,6 +1,8 @@
 from pathlib import Path
+
 import cv2
 from tap import Tap
+
 
 def aruco_dict_from_string_string_list(name: str) -> int:
     """
@@ -11,6 +13,7 @@ def aruco_dict_from_string_string_list(name: str) -> int:
 
     return getattr(cv2.aruco, name)
 
+
 def cv2_flag_from_string(flag: str) -> int:
     """
     Convert a string like 'CALIB_FIX_K3' to cv2.CALIB_FIX_K3
@@ -19,6 +22,7 @@ def cv2_flag_from_string(flag: str) -> int:
         raise ValueError(f"Invalid calibration flag: {flag}")
 
     return getattr(cv2, flag)
+
 
 def compose_cv2_flags(flags: list[str]) -> int:
     """
@@ -35,6 +39,7 @@ def compose_cv2_flags(flags: list[str]) -> int:
         final_flag |= cv2_flag_from_string(name)
 
     return final_flag
+
 
 class CameraCalibrationArgs(Tap):
     images_path: Path
@@ -68,7 +73,9 @@ class CameraCalibrationCharucoArgs(Tap):
         )
         self.add_argument(
             "--stereo_flags",
-            help=("Extra configuration options for stereo calibration."
-             +" Default: CALIB_FIX_INTRINSIC. For MockOR Microscope use: CALIB_USE_INTRINSIC_GUESS"),
+            help=(
+                "Extra configuration options for stereo calibration."
+                + " Default: CALIB_FIX_INTRINSIC. For MockOR Microscope use: CALIB_USE_INTRINSIC_GUESS"
+            ),
             nargs="+",
         )

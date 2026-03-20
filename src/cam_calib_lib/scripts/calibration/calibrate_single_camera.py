@@ -6,6 +6,7 @@ Performs calibration for either left or right camera.
 import re
 from pathlib import Path
 from typing import List, Tuple
+
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -106,8 +107,6 @@ def prepare_calibration_data(
 
     print(f"\nSuccessfully detected corners in {len(obj_points)}/{len(images)} images")
     return obj_points, img_points
-
-
 
 
 def perform_single_calibration(
@@ -338,9 +337,10 @@ def main(args: CliArgs):
     assert isinstance(args.images_path, Path)
     assert isinstance(args.output_path, Path)
     assert args.images_path.exists(), f"Images path does not exist: {args.images_path}"
-    assert args.camera_name in ["left", "right"], (
-        f"Camera must be 'left' or 'right', got '{args.camera_name}'"
-    )
+    assert args.camera_name in [
+        "left",
+        "right",
+    ], f"Camera must be 'left' or 'right', got '{args.camera_name}'"
 
     regular_chessboard = OpenCVChessboard(
         corners_per_row=args.corners_per_board_row,

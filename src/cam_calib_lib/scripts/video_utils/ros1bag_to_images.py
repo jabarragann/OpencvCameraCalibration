@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 
-from dataclasses import dataclass
-from pathlib import Path
-import rospy
-import subprocess
 import os
 import signal
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 import cv2
-
 import message_filters
+import rospy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 from tap import Tap
 
 
 class SimpleArgumentParser(Tap):
-    bag_path: Path = Path(
-        "output/mockor_calibration/calibration_data03.bag"
-    )
+    bag_path: Path = Path("output/mockor_calibration/calibration_data03.bag")
     left_topic: str = "/decklink_left/camera/image_raw"
     right_topic: str = "/decklink_right/camera/image_raw"
     output_dir: Path = Path("output/microscope_calibration/images")

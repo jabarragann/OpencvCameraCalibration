@@ -1,6 +1,6 @@
+import cv2
 import numpy as np
 import numpy.typing as npt
-import cv2
 
 
 def calculate_reprojection_error(
@@ -37,6 +37,7 @@ def calculate_reprojection_error(
     mean_error /= len(obj_points)
 
     return mean_error
+
 
 def epipolar_error_px(
     pts_left: list[npt.NDArray[np.float32]],
