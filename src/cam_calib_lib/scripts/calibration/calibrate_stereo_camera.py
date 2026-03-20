@@ -14,7 +14,12 @@ from cam_calib_lib.OpencvBoards import OpenCVChessboard
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
 from cam_calib_lib import Utils as calib_utils
 from cam_calib_lib import ArgumentParsers as calib_args
+from cam_calib_lib.Logger import setup_logging_from_json
 
+from pyprojroot.here import here  # type: ignore
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CliArgs(Tap):
     images_path: Path
@@ -77,7 +82,7 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
         left_images.append(left_dict[frame_num])
         right_images.append(right_dict[frame_num])
 
-    print(f"Found {len(left_images)} stereo image pairs")
+    logger.info(f"Found {len(left_images)} stereo image pairs")
     return left_images, right_images
 
 
@@ -105,13 +110,13 @@ def prepare_calibration_data(
     right_img_points: List[npt.NDArray[np.float32]] = []
     valid_pairs: List[Tuple[int, int]] = []
 
-    print("Detecting chessboard corners...")
+    logger.info("Detecting chessboard corners...")
     for idx, (left_path, right_path) in enumerate(zip(left_images, right_images)):
         left_img = cv2.imread(str(left_path))
         right_img = cv2.imread(str(right_path))
 
         if left_img is None or right_img is None:
-            print(f"Warning: Could not load image pair {idx}")
+            logger.warning(f"Warning: Could not load image pair {idx}")
             continue
 
         left_img = np.asarray(left_img, dtype=np.uint8)
@@ -134,16 +139,16 @@ def prepare_calibration_data(
             left_img_points.append(left_corners) # type: ignore
             right_img_points.append(right_corners) # type: ignore
             valid_pairs.append((idx, idx))
-            print(f"  Pair {idx}: ✓ Both images detected")
+            logger.debug(f"  Pair {idx}: ✓ Both images detected")
         else:
             status: list[str] = []
             if not left_ret:
                 status.append("left failed")
             if not right_ret:
                 status.append("right failed")
-            print(f"  Pair {idx}: ✗ {' and '.join(status)}")
+            logger.warning(f"  Pair {idx}: ✗ {' and '.join(status)}")
 
-    print(
+    logger.info(
         f"\nSuccessfully detected corners in {len(obj_points)}/{len(left_images)} pairs"
     )
     return obj_points, left_img_points, right_img_points, valid_pairs
@@ -196,7 +201,7 @@ def rectify_and_display(
     if display:
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.imshow(window_name, stereo_pair)
-        print("Displaying rectified images. Press any key to close...")
+        logger.info("Displaying rectified images. Press any key to close...")
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -246,7 +251,7 @@ def display_undistorted_images(
     #     )
 
     cv2.imshow("Undistorted Left/Right Images", concatenated)
-    print("Showing undistorted left/right images. Press any key to close...")
+    logger.info("Showing undistorted left/right images. Press any key to close...")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -257,11 +262,11 @@ def report_rectification_errors(
     output_path: Path,
 ):
 
-    print("Images with big errors:")
+    logger.info("Images with big errors:")
     images_to_filter:list[str] = []
     for idx, err in zip(all_rect_ids, errors_per_image):
         if err > 1.5:
-            print(f"Image {idx} error: {err}")
+            logger.info(f"Image {idx} error: {err}")
             images_to_filter.append(idx)
 
     rectified_error = np.array(errors_per_image).squeeze()
@@ -272,11 +277,11 @@ def report_rectification_errors(
             f.write(f"{img_id}\n")
 
     ## Calculate error statistics
-    print(f"Rectified error mean: {np.mean(rectified_error)}")
-    print(f"Rectified error std: {np.std(rectified_error)}")
-    print(f"Rectified error max: {np.max(rectified_error)}")
-    print(f"Rectified error min: {np.min(rectified_error)}")
-    print(f"95% confidence interval: {np.percentile(rectified_error, 95)}")
+    logger.info(f"Rectified error mean: {np.mean(rectified_error)}")
+    logger.info(f"Rectified error std: {np.std(rectified_error)}")
+    logger.info(f"Rectified error max: {np.max(rectified_error)}")
+    logger.info(f"Rectified error min: {np.min(rectified_error)}")
+    logger.info(f"95% confidence interval: {np.percentile(rectified_error, 95)}")
 
 
 def main(args: CliArgs):
@@ -322,7 +327,7 @@ def main(args: CliArgs):
     )
 
     if len(obj_points) < 10:
-        print(
+        logger.warning(
             f"Warning: Only {len(obj_points)} valid pairs found. At least 10 pairs are recommended for good calibration."
         )
 
@@ -339,7 +344,7 @@ def main(args: CliArgs):
     )
 
     # Test rectification on first pair
-    print("\nTesting rectification on first image pair...")
+    logger.info("Testing rectification on first image pair...")
     left_img = cv2.imread(str(left_images[0]))
     right_img = cv2.imread(str(right_images[0]))
 
@@ -365,9 +370,9 @@ def main(args: CliArgs):
             rectification_maps_output.right_map2,
         )
 
-    print("\nCalibration complete!")
+    logger.info("\nCalibration complete!")
 
-    print("Saving rectified images...")
+    logger.info("Saving rectified images...")
 
     all_rect_corners_left: list[npt.NDArray[np.float32]] = []
     all_rect_corners_right: list[npt.NDArray[np.float32]] = []
@@ -418,11 +423,16 @@ def main(args: CliArgs):
     for idx in range(d.shape[0]):
         img_error = float(np.mean(np.sqrt(np.square(d[idx])))) # type: ignore
         errors_per_image.append(img_error)
-        # print(f"Image {all_rect_ids[idx]} error: {img_error}")
+        # logger.debug(f"Image {all_rect_ids[idx]} error: {img_error}")
 
     report_rectification_errors(all_rect_ids, errors_per_image, args.output_path)
 
 
 if __name__ == "__main__":
     args = CliArgs().parse_args()
+
+    logger_config = here() / "configs" / "logger_config.json"
+    logger_output_file = args.output_path / "stereo_calib_refinement.log"
+    setup_logging_from_json(logger_config, logger_output_file)
+
     main(args)
