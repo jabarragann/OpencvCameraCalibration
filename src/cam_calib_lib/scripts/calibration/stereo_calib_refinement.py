@@ -50,7 +50,7 @@ class CliArgs(Tap):
     corners_per_board_row: int
     corners_per_board_column: int
     square_size: float  # in meters
-    distortion_flags: list[str] = ["CALIB_FIX_K3", "CALIB_ZERO_TANGENT_DIST"]
+    distortion_flags: list[str] = []
     stereo_flags: list[str] = ["CALIB_FIX_INTRINSIC"]
 
     def configure(self):
