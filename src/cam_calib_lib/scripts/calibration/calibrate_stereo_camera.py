@@ -206,6 +206,7 @@ def rectify_and_display(
         logger.info("Displaying rectified images. Press any key to close...")
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+        cv2.waitKey(1)  # let HighGUI process the close before long-running work
 
     left_rectified = np.asarray(left_rectified, dtype=np.uint8)
     right_rectified = np.asarray(right_rectified, dtype=np.uint8)
@@ -256,6 +257,7 @@ def display_undistorted_images(
     logger.info("Showing undistorted left/right images. Press any key to close...")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+    cv2.waitKey(1)  # let HighGUI process the close before long-running work
 
 
 def report_rectification_errors(

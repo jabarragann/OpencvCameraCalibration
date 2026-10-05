@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 import cv2
@@ -20,6 +21,7 @@ from cam_calib_lib.Utils import index_to_bgr
 class CliArgs(CameraCalibrationCharucoArgs):
     print_debug: bool = False
     save_debug_images: bool = False
+    rect_line_spacing: int = 50  # min vertical spacing (px) between epipolar lines in rect_vis
 
 
 def prepare_stereo_charuco_data(
@@ -179,6 +181,79 @@ def save_detected_corners(
         cv2.imwrite(str(out_file), debug)
 
 
+def save_rectified_corner_lines(
+    board: OpenCVCharucoBoard,
+    left_img: npt.NDArray[np.uint8],
+    right_img: npt.NDArray[np.uint8],
+    left_map1: npt.NDArray[np.float32],
+    left_map2: npt.NDArray[np.float32],
+    right_map1: npt.NDArray[np.float32],
+    right_map2: npt.NDArray[np.float32],
+    save_vis_path: Path,
+    min_line_spacing: int = 50,
+    radius: int = 6,
+) -> list[float]:
+    """
+    Rectify a stereo pair, detect ChArUco corners in both rectified images and, for
+    corners seen in both, draw a horizontal line from the left corner across both images.
+    If rectification is correct, the matching right corner lands on the same line.
+
+    Lines are kept at least `min_line_spacing` px apart to avoid overcrowding; only corners
+    that got a line are drawn. Returns |dy| (px) for every matched corner (empty if none).
+    """
+    left_rect = cv2.remap(left_img, left_map1, left_map2, cv2.INTER_LINEAR)
+    right_rect = cv2.remap(right_img, right_map1, right_map2, cv2.INTER_LINEAR)
+    left_rect = np.asarray(left_rect, dtype=np.uint8)
+    right_rect = np.asarray(right_rect, dtype=np.uint8)
+
+    left_ret, left_corners, left_ids = board.detect_corners(left_rect)
+    right_ret, right_corners, right_ids = board.detect_corners(right_rect)
+
+    vis = np.hstack([left_rect, right_rect])
+    w = left_rect.shape[1]
+
+    if not (left_ret and right_ret):
+        cv2.putText(vis, "No common corners", (20, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, (139, 0, 0), 3)
+        cv2.imwrite(str(save_vis_path), vis)
+        return []
+
+    left_pts = dict(zip(left_ids.flatten(), left_corners.reshape(-1, 2)))
+    right_pts = dict(zip(right_ids.flatten(), right_corners.reshape(-1, 2)))
+    common_ids = [i for i in left_pts if i in right_pts]
+    if not common_ids:
+        cv2.imwrite(str(save_vis_path), vis)
+        return []
+
+    dys = [float(abs(left_pts[i][1] - right_pts[i][1])) for i in common_ids]
+
+    # Greedy selection top-to-bottom: keep a corner only if its line is far enough
+    # from the previously kept one.
+    common_ids.sort(key=lambda i: left_pts[i][1])
+    selected: list[int] = []
+    for i in common_ids:
+        if not selected or left_pts[i][1] - left_pts[selected[-1]][1] >= min_line_spacing:
+            selected.append(i)
+
+    for k, i in enumerate(selected):
+        color = index_to_bgr(k, len(selected))
+        pl = left_pts[i]
+        pr = right_pts[i]
+        y = int(round(pl[1]))
+        cv2.line(vis, (0, y), (2 * w, y), color, 1, cv2.LINE_AA)
+        cv2.circle(vis, (int(round(pl[0])), y), radius, color, 2, cv2.LINE_AA)
+        cv2.circle(vis, (int(round(pr[0])) + w, int(round(pr[1]))), radius, color, 2, cv2.LINE_AA)
+
+    mean_dy = float(np.mean(dys))
+    cv2.putText(
+        vis,
+        f"matched corners: {len(common_ids)}  mean |dy|: {mean_dy:.2f}px  std: {np.std(dys):.2f}px  max |dy|: {max(dys):.2f}px",
+        (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (139, 0, 0), 2, cv2.LINE_AA,
+    )
+    cv2.imwrite(str(save_vis_path), vis)
+    return dys
+
+
 def main(args: CliArgs):
     assert isinstance(args.images_path, Path)
     assert isinstance(args.output_path, Path)
@@ -292,19 +367,57 @@ def main(args: CliArgs):
         print("Saving rectified images...")
         save_vis_path = args.output_path / "debug_images" / "rect_vis"
         save_vis_path.mkdir(parents=True, exist_ok=True)
+        report_rows: list[dict[str, object]] = []
+        all_dys: list[float] = []
+        per_image_dys: list[list[float]] = []
         for i in range(len(left_images)):
-            left_img = cv2.imread(str(left_images[i]))
-            right_img = cv2.imread(str(right_images[i]))
-            rectify_and_display(
+            left_img = np.asarray(cv2.imread(str(left_images[i])), dtype=np.uint8)
+            right_img = np.asarray(cv2.imread(str(right_images[i])), dtype=np.uint8)
+            dys = save_rectified_corner_lines(
+                board,
                 left_img,
                 right_img,
                 rectification_maps_output.left_map1,
                 rectification_maps_output.left_map2,
                 rectification_maps_output.right_map1,
                 rectification_maps_output.right_map2,
-                display=False,
-                save_vis_path=save_vis_path / f"rectified_stereo_pair_{i}.png",
+                save_vis_path=save_vis_path / f"rectified_stereo_pair_{i:03d}.png",
+                min_line_spacing=args.rect_line_spacing,
             )
+            all_dys.extend(dys)
+            per_image_dys.append(dys)
+            report_rows.append(
+                {
+                    "pair": i,
+                    "left_image": left_images[i].name,
+                    "right_image": right_images[i].name,
+                    "num_corners": len(dys),
+                    "mean_dy_px": f"{np.mean(dys):.4f}" if dys else "",
+                    "std_dy_px": f"{np.std(dys):.4f}" if dys else "",
+                    "median_dy_px": f"{np.median(dys):.4f}" if dys else "",
+                    "max_dy_px": f"{np.max(dys):.4f}" if dys else "",
+                }
+            )
+
+        report_path = args.output_path / "rectification_errors.csv"
+        with open(report_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(report_rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(report_rows)
+        print(f"Saved per-image rectification errors to {report_path}")
+
+        if all_dys:
+            # Macro: one error per image (its mean |dy|), then stats over images.
+            # Micro: stats over all corners pooled, so images with more corners weigh more.
+            per_image = [float(np.mean(d)) for d in per_image_dys if d]
+            print(f"Rectification |dy| ({len(per_image)} pairs, {len(all_dys)} corners):")
+            for name, vals in [("macro (per image)", per_image), ("micro (per corner)", all_dys)]:
+                print(
+                    f"  {name:<19} min {np.min(vals):.2f}px, max {np.max(vals):.2f}px, "
+                    f"mean {np.mean(vals):.2f}px, std {np.std(vals):.2f}px, median {np.median(vals):.2f}px"
+                )
+        else:
+            print("Rectification |dy|: no corners matched in any rectified pair")
 
 
 if __name__ == "__main__":
