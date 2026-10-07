@@ -18,7 +18,6 @@ camera_name="dvrk_classic"
 # D1
 # dataset=/Users/juan95/research/archits_project/datasets/charuco-test-dataset/images
 # output_path=/Users/juan95/research/archits_project/datasets/charuco-test-dataset/output
-
 # D2
 dataset=/Users/juan95/research/archits_project/datasets/hand_eye_dataset2/calibration_images
 output_path=/Users/juan95/research/archits_project/datasets/hand_eye_dataset2/calibration_output
@@ -28,9 +27,6 @@ mkdir -p "$output_path"
 
 # Board: 20 x 15 squares (long side = x). Marker/square ratio ~0.67.
 # TODO: measure the printed board and set square_size / marker_size (metres).
-
-# Set to "--show_windows" to pop up the undistorted/rectified pairs (blocks on keypress)
-show_windows=""
 
 # CALIB_ZERO_TANGENT_DIST
 $PYTHON -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera_charuco \
@@ -44,7 +40,7 @@ $PYTHON -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera_charuco \
     --output_path "$output_path" \
     --print_debug \
     --save_debug_images \
-    $show_windows \
-    --rect_line_spacing 50 \
+    --rect_line_spacing 30 \
+    --min_corners 35 \
     --distortion_flags CALIB_FIX_K3  \
-    --stereo_flags CALIB_USE_INTRINSIC_GUESS
+    --stereo_flags CALIB_USE_INTRINSIC_GUESS 

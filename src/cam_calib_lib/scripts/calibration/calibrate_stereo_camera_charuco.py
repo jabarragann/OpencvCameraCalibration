@@ -28,12 +28,14 @@ class CliArgs(CameraCalibrationCharucoArgs):
     save_debug_images: bool = False
     show_windows: bool = False  # show undistorted/rectified pairs in OpenCV windows (blocks on keypress)
     rect_line_spacing: int = 50  # min vertical spacing (px) between epipolar lines in rect_vis
+    min_corners: int = 20  # min corners seen in both images for a pair to be used in calibration
 
 
 def prepare_stereo_charuco_data(
     board: OpenCVCharucoBoard,
     left_images: list[Path],
     right_images: list[Path],
+    min_corners: int = 20,
 ) -> tuple[
     list[npt.NDArray[np.float32]],  # obj_points
     list[npt.NDArray[np.float32]],  # left_img_points
@@ -87,8 +89,9 @@ def prepare_stereo_charuco_data(
             ).nonzero()[0]
             right_corners_filtered = right_corners[right_common_idx]
             right_corners_ids_filtered = right_corners_ids[right_common_idx]
+            valid_corners_in_image = right_corners_filtered.shape[0]
 
-            if right_corners_filtered.shape[0] > 10:
+            if valid_corners_in_image >= min_corners:
                 objp_left = board.get_object_points(
                     left_corners_filtered, left_corners_ids_filtered
                 )
@@ -110,17 +113,14 @@ def prepare_stereo_charuco_data(
                 right_valid_images.append(right_img)
                 valid_frame_ids.append(fid)
 
-                valid_corners_in_image = right_corners_filtered.shape[0]
-
-        minimum_corners_required = 20
-        if valid_corners_in_image > minimum_corners_required:
+        if valid_corners_in_image >= min_corners:
             print(
                 f"  Pair {idx} (frame {fid}): ✓ Both images detected. Added {valid_corners_in_image} object points"
             )
         else:
             print(
                 f"  Pair {idx} (frame {fid}): ✗ {valid_corners_in_image} corners detected. "
-                + f"Minimum {minimum_corners_required} corners required"
+                + f"Minimum {min_corners} corners required"
             )
 
     print(
@@ -318,7 +318,9 @@ def main(args: CliArgs):
         left_valid_images,
         right_valid_images,
         valid_frame_ids,
-    ) = prepare_stereo_charuco_data(board, left_images, right_images)
+    ) = prepare_stereo_charuco_data(
+        board, left_images, right_images, args.min_corners
+    )
 
     if len(obj_points) < 10:
         print(
@@ -379,13 +381,18 @@ def main(args: CliArgs):
             valid_frame_ids,
         )
 
-        print("Saving rectified images...")
+        # Only evaluate rectification on the pairs that were used in the calibration
+        used_frame_ids = set(valid_frame_ids)
+        used_pairs = [
+            i for i in range(len(left_images)) if frame_id(left_images[i]) in used_frame_ids
+        ]
+        print(f"Saving rectified images for {len(used_pairs)} pairs used in calibration...")
         save_vis_path = args.output_path / "debug_images" / "rect_vis"
         save_vis_path.mkdir(parents=True, exist_ok=True)
         report_rows: list[dict[str, object]] = []
         all_dys: list[float] = []
         per_image_dys: list[list[float]] = []
-        for i in range(len(left_images)):
+        for i in used_pairs:
             left_img = np.asarray(cv2.imread(str(left_images[i])), dtype=np.uint8)
             right_img = np.asarray(cv2.imread(str(right_images[i])), dtype=np.uint8)
             dys = save_rectified_corner_lines(
