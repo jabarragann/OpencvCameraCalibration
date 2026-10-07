@@ -7,17 +7,21 @@
 set -e
 set -x
 
-# PYTHON=/opt/miniconda3/envs/surpass312/bin/python
+PYTHON=python
 
 pydebug() {
     $PYTHON -m debugpy --listen 5678 --wait-for-client "$@"
 }
 
 camera_name="dvrk_classic"
-dataset=/Users/juan95/research/archits_project/charuco-test-dataset/images
-# Results go in OpencvCameraCalibration/output, like the other scripts
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-output_path=$repo_root/output/charuco-test-dataset/results_with_full_dist_$camera_name
+
+# D1
+# dataset=/Users/juan95/research/archits_project/datasets/charuco-test-dataset/images
+# output_path=/Users/juan95/research/archits_project/datasets/charuco-test-dataset/output
+
+# D2
+dataset=/Users/juan95/research/archits_project/datasets/hand_eye_dataset2/calibration_images
+output_path=/Users/juan95/research/archits_project/datasets/hand_eye_dataset2/calibration_output
 
 # The calibration script doesn't create the output folder itself
 mkdir -p "$output_path"
