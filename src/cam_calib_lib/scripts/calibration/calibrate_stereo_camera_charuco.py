@@ -18,9 +18,15 @@ from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
 from cam_calib_lib.Utils import index_to_bgr
 
 
+def frame_id(image_path: Path) -> str:
+    """Original frame number from a left-XXXX.png / right-XXXX.png filename, e.g. '0003'."""
+    return image_path.stem.split("-", 1)[-1].split("_", 1)[-1]
+
+
 class CliArgs(CameraCalibrationCharucoArgs):
     print_debug: bool = False
     save_debug_images: bool = False
+    show_windows: bool = False  # show undistorted/rectified pairs in OpenCV windows (blocks on keypress)
     rect_line_spacing: int = 50  # min vertical spacing (px) between epipolar lines in rect_vis
 
 
@@ -34,6 +40,7 @@ def prepare_stereo_charuco_data(
     list[npt.NDArray[np.float32]],  # right_img_points
     list[npt.NDArray[np.uint8]],  # left_valid_images
     list[npt.NDArray[np.uint8]],  # right_valid_images
+    list[str],  # valid_frame_ids
 ]:
     """
     Prepare object points and image points for stereo calibration.
@@ -47,14 +54,16 @@ def prepare_stereo_charuco_data(
     right_img_points: list[npt.NDArray[np.float32]] = []
     left_valid_images: list[npt.NDArray[np.uint8]] = []
     right_valid_images: list[npt.NDArray[np.uint8]] = []
+    valid_frame_ids: list[str] = []
 
     print("Detecting chessboard corners...")
     for idx, (left_path, right_path) in enumerate(zip(left_images, right_images)):
         left_img = cv2.imread(str(left_path))
         right_img = cv2.imread(str(right_path))
+        fid = frame_id(left_path)
 
         if left_img is None or right_img is None:
-            print(f"Warning: Could not load image pair {idx}")
+            print(f"Warning: Could not load image pair {idx} (frame {fid})")
             continue
 
         left_img = np.asarray(left_img, dtype=np.uint8)
@@ -99,17 +108,18 @@ def prepare_stereo_charuco_data(
                 right_img_points.append(right_corners_filtered)
                 left_valid_images.append(left_img)
                 right_valid_images.append(right_img)
+                valid_frame_ids.append(fid)
 
                 valid_corners_in_image = right_corners_filtered.shape[0]
 
         minimum_corners_required = 20
         if valid_corners_in_image > minimum_corners_required:
             print(
-                f"  Pair {idx}: ✓ Both images detected. Added {valid_corners_in_image} object points"
+                f"  Pair {idx} (frame {fid}): ✓ Both images detected. Added {valid_corners_in_image} object points"
             )
         else:
             print(
-                f"  Pair {idx}: ✗ {valid_corners_in_image} corners detected. "
+                f"  Pair {idx} (frame {fid}): ✗ {valid_corners_in_image} corners detected. "
                 + f"Minimum {minimum_corners_required} corners required"
             )
 
@@ -122,6 +132,7 @@ def prepare_stereo_charuco_data(
         right_img_points,
         left_valid_images,
         right_valid_images,
+        valid_frame_ids,
     )
 
 
@@ -132,6 +143,7 @@ def save_detected_corners(
     right_img_points: list[npt.NDArray[np.float32]],
     left_valid_images: list[npt.NDArray[np.uint8]],
     right_valid_images: list[npt.NDArray[np.uint8]],
+    frame_ids: list[str],
     radius: int = 4,
     thickness: int = -1,
 ):
@@ -177,7 +189,7 @@ def save_detected_corners(
         # Concatenate for easier visual inspection
         debug = np.hstack([imgL, imgR])
 
-        out_file = output_path / f"corners_{i:03d}.png"
+        out_file = output_path / f"corners_{frame_ids[i]}.png"
         cv2.imwrite(str(out_file), debug)
 
 
@@ -305,6 +317,7 @@ def main(args: CliArgs):
         right_img_points,
         left_valid_images,
         right_valid_images,
+        valid_frame_ids,
     ) = prepare_stereo_charuco_data(board, left_images, right_images)
 
     if len(obj_points) < 10:
@@ -324,32 +337,33 @@ def main(args: CliArgs):
         )
     )
 
-    # Test rectification on first pair
-    print("\nTesting rectification on first image pair...")
-    left_img = cv2.imread(str(left_images[0]))
-    right_img = cv2.imread(str(right_images[0]))
+    if args.show_windows:
+        # Test rectification on first pair
+        print("\nTesting rectification on first image pair...")
+        left_img = cv2.imread(str(left_images[0]))
+        right_img = cv2.imread(str(right_images[0]))
 
-    if left_img is not None and right_img is not None:
-        left_img = np.asarray(left_img, dtype=np.uint8)
-        right_img = np.asarray(right_img, dtype=np.uint8)
+        if left_img is not None and right_img is not None:
+            left_img = np.asarray(left_img, dtype=np.uint8)
+            right_img = np.asarray(right_img, dtype=np.uint8)
 
-        display_undistorted_images(
-            left_img,
-            right_img,
-            stereo_calibration_output.left_mtx,
-            stereo_calibration_output.left_dist,
-            stereo_calibration_output.right_mtx,
-            stereo_calibration_output.right_dist,
-        )
+            display_undistorted_images(
+                left_img,
+                right_img,
+                stereo_calibration_output.left_mtx,
+                stereo_calibration_output.left_dist,
+                stereo_calibration_output.right_mtx,
+                stereo_calibration_output.right_dist,
+            )
 
-        rectify_and_display(
-            left_img,
-            right_img,
-            rectification_maps_output.left_map1,
-            rectification_maps_output.left_map2,
-            rectification_maps_output.right_map1,
-            rectification_maps_output.right_map2,
-        )
+            rectify_and_display(
+                left_img,
+                right_img,
+                rectification_maps_output.left_map1,
+                rectification_maps_output.left_map2,
+                rectification_maps_output.right_map1,
+                rectification_maps_output.right_map2,
+            )
 
     print("\nCalibration complete!")
 
@@ -362,6 +376,7 @@ def main(args: CliArgs):
             right_img_points,
             left_valid_images,
             right_valid_images,
+            valid_frame_ids,
         )
 
         print("Saving rectified images...")
@@ -381,7 +396,7 @@ def main(args: CliArgs):
                 rectification_maps_output.left_map2,
                 rectification_maps_output.right_map1,
                 rectification_maps_output.right_map2,
-                save_vis_path=save_vis_path / f"rectified_stereo_pair_{i:03d}.png",
+                save_vis_path=save_vis_path / f"rectified_stereo_pair_{frame_id(left_images[i])}.png",
                 min_line_spacing=args.rect_line_spacing,
             )
             all_dys.extend(dys)
@@ -389,6 +404,7 @@ def main(args: CliArgs):
             report_rows.append(
                 {
                     "pair": i,
+                    "frame": frame_id(left_images[i]),
                     "left_image": left_images[i].name,
                     "right_image": right_images[i].name,
                     "num_corners": len(dys),
