@@ -8,6 +8,10 @@ pydebug() {
 
 camera_name="stereo_microscope"
 
+## Notes for microscope calibration:
+# --rectify_flags should have no values.
+# This is equivalent to flags=0. Avoids forcing same principal point.
+
 python -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera_charuco  \
     --images_path datasets/microscope_dataset7/C2/data \
     --camera_name $camera_name\
@@ -20,6 +24,7 @@ python -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera_charuco  \
     --save_debug_images \
     --distortion_flags CALIB_FIX_K2 CALIB_FIX_K3 CALIB_ZERO_TANGENT_DIST \
     --stereo_flags CALIB_USE_INTRINSIC_GUESS \
+    --rectify_flags    \
     --exclude "0008 0027 0033 0034 0048 0051" 
     # --show_windows
 

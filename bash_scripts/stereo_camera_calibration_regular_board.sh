@@ -5,12 +5,12 @@ set -x
 pydebug() {
     python -m debugpy --listen 5678 --wait-for-client "$@"
 }
-python -m cam_calib_lib.scripts.calibration.stereo_calib_refinement \
-    --images_path output/surpass_dvrksi/stereo_calib_dvrksi_2026_03_03/calibration_data \
+python -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera \
+    --images_path /home/juan95/research/surpass_grant/soft_tissue_deformations/data/phantom_demo/calibration/calibration_images \
     --corners_per_board_row 8 \
     --corners_per_board_column 6 \
     --square_size 0.004 \
-    --output_path output/surpass_dvrksi/stereo_calib_dvrksi_2026_03_03/calib_results1_stereo_refinement \
+    --output_path  /home/juan95/research/surpass_grant/soft_tissue_deformations/data/phantom_demo/calibration/offline_calibration5 \
     --distortion_flags CALIB_FIX_K3 CALIB_ZERO_TANGENT_DIST \
     --stereo_flags CALIB_FIX_INTRINSIC
 
