@@ -12,6 +12,7 @@ from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
 from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     display_undistorted_images,
     load_stereo_images,
+    parse_frame_ids,
     rectify_and_display,
 )
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
@@ -21,6 +22,8 @@ from cam_calib_lib.Utils import index_to_bgr
 class CliArgs(CameraCalibrationCharucoArgs):
     print_debug: bool = False
     save_debug_images: bool = False
+    exclude: list[str] = []  # frame ids to skip, e.g. --exclude "0034 0048"
+    show_windows: bool = False  # open OpenCV windows with undistorted/rectified previews (needs a display)
     rect_line_spacing: int = 50  # min vertical spacing (px) between epipolar lines in rect_vis
 
 
@@ -270,6 +273,7 @@ def main(args: CliArgs):
         args.marker_size,
         args.distortion_flags,
         args.stereo_flags,
+        excluded_frames=sorted(parse_frame_ids(args.exclude)),
     )
 
     ## Opencv Flags
@@ -287,7 +291,7 @@ def main(args: CliArgs):
     )
 
     # Load stereo image pairs
-    left_images, right_images = load_stereo_images(args.images_path)
+    left_images, right_images = load_stereo_images(args.images_path, exclude=args.exclude)
 
     if len(left_images) == 0:
         raise ValueError("No valid stereo image pairs found!")
@@ -324,12 +328,12 @@ def main(args: CliArgs):
         )
     )
 
-    # Test rectification on first pair
-    print("\nTesting rectification on first image pair...")
+    # Preview undistortion/rectification on first pair (interactive only)
     left_img = cv2.imread(str(left_images[0]))
     right_img = cv2.imread(str(right_images[0]))
 
-    if left_img is not None and right_img is not None:
+    if args.show_windows and left_img is not None and right_img is not None:
+        print("\nShowing undistortion/rectification preview on first image pair...")
         left_img = np.asarray(left_img, dtype=np.uint8)
         right_img = np.asarray(right_img, dtype=np.uint8)
 
