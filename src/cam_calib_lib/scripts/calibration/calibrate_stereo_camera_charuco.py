@@ -274,11 +274,13 @@ def main(args: CliArgs):
         args.distortion_flags,
         args.stereo_flags,
         excluded_frames=sorted(parse_frame_ids(args.exclude)),
+        rectify_flags=args.rectify_flags,
     )
 
     ## Opencv Flags
     distortion_flags = calib_args.compose_cv2_flags(args.distortion_flags)
     stereo_flags = calib_args.compose_cv2_flags(args.stereo_flags)
+    rectify_flags = calib_args.compose_cv2_flags(args.rectify_flags)
     aruco_dict_flag = calib_args.aruco_dict_from_string_string_list(args.aruco_dict)
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_flag)
@@ -325,6 +327,7 @@ def main(args: CliArgs):
             distortion_flags,
             stereo_flags,
             args.output_path,
+            rectify_flags=rectify_flags,
         )
     )
 

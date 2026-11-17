@@ -339,6 +339,7 @@ def save_calibration_parameters_charuco(
     distortion_flags: list[str],
     stereo_calib_flags: list[str],
     excluded_frames: list[int] | None = None,
+    rectify_flags: list[str] | None = None,
 ):
     params_dict: dict[str, str | int | float | list[str] | list[int]] = {}
     params_dict["aruco_dict"] = aruco_dict
@@ -349,6 +350,8 @@ def save_calibration_parameters_charuco(
     params_dict["distortion_flags"] = distortion_flags
     params_dict["stereo_calib_flags"] = stereo_calib_flags
     params_dict["excluded_frames"] = excluded_frames or []
+    if rectify_flags is not None:
+        params_dict["rectify_flags"] = rectify_flags
     
     if not filename.exists():
         filename.parent.mkdir(parents=True, exist_ok=True)

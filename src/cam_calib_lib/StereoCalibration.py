@@ -239,6 +239,7 @@ def compute_rectification_matrices(
     R: npt.NDArray[np.float32],
     T: npt.NDArray[np.float32],
     alpha: float = 0.0,
+    rectify_flags: int = cv2.CALIB_ZERO_DISPARITY,
 ):
     R_left, R_right, P_left, P_right, Q, left_roi, right_roi = cv2.stereoRectify(
         left_camera_matrix,
@@ -248,7 +249,7 @@ def compute_rectification_matrices(
         image_size,
         R,
         T,
-        flags=cv2.CALIB_ZERO_DISPARITY,
+        flags=rectify_flags,
         alpha=alpha,  # 0=valid pixels only, 1=all pixels
     )
 
@@ -298,6 +299,7 @@ def stereo_calibration_pipeline(
     distortion_flags: int,
     stereo_flags: int,
     output_path: Path,
+    rectify_flags: int = cv2.CALIB_ZERO_DISPARITY,
 ) -> tuple[StereoCalibrationOutput, RectificationOutput, RectificationMapsOutput]:
 
     assert isinstance(distortion_flags, int), "distortion_flags must be an integer"
@@ -333,6 +335,7 @@ def stereo_calibration_pipeline(
             image_size,
             R,
             T,
+            rectify_flags=rectify_flags,
         )
     )
 
