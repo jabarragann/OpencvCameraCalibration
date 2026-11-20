@@ -12,6 +12,7 @@ from cam_calib_lib.OpencvBoards import OpenCVCharucoBoard
 from cam_calib_lib.scripts.calibration.calibrate_stereo_camera import (
     display_undistorted_images,
     load_stereo_images,
+    parse_frame_ids,
     rectify_and_display,
 )
 from cam_calib_lib.StereoCalibration import stereo_calibration_pipeline
@@ -26,7 +27,8 @@ def frame_id(image_path: Path) -> str:
 class CliArgs(CameraCalibrationCharucoArgs):
     print_debug: bool = False
     save_debug_images: bool = False
-    show_windows: bool = False  # show undistorted/rectified pairs in OpenCV windows (blocks on keypress)
+    exclude: list[str] = []  # frame ids to skip, e.g. --exclude "0034 0048"
+    show_windows: bool = False  # open OpenCV windows with undistorted/rectified previews (needs a display)
     rect_line_spacing: int = 50  # min vertical spacing (px) between epipolar lines in rect_vis
     min_corners: int = 20  # min corners seen in both images for a pair to be used in calibration
 
@@ -282,11 +284,14 @@ def main(args: CliArgs):
         args.marker_size,
         args.distortion_flags,
         args.stereo_flags,
+        excluded_frames=sorted(parse_frame_ids(args.exclude)),
+        rectify_flags=args.rectify_flags,
     )
 
     ## Opencv Flags
     distortion_flags = calib_args.compose_cv2_flags(args.distortion_flags)
     stereo_flags = calib_args.compose_cv2_flags(args.stereo_flags)
+    rectify_flags = calib_args.compose_cv2_flags(args.rectify_flags)
     aruco_dict_flag = calib_args.aruco_dict_from_string_string_list(args.aruco_dict)
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_flag)
@@ -299,7 +304,7 @@ def main(args: CliArgs):
     )
 
     # Load stereo image pairs
-    left_images, right_images = load_stereo_images(args.images_path)
+    left_images, right_images = load_stereo_images(args.images_path, exclude=args.exclude)
 
     if len(left_images) == 0:
         raise ValueError("No valid stereo image pairs found!")
@@ -336,6 +341,7 @@ def main(args: CliArgs):
             distortion_flags,
             stereo_flags,
             args.output_path,
+            rectify_flags=rectify_flags,
         )
     )
 

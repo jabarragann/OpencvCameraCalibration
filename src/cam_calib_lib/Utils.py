@@ -338,8 +338,10 @@ def save_calibration_parameters_charuco(
     marker_size: float,
     distortion_flags: list[str],
     stereo_calib_flags: list[str],
+    excluded_frames: list[int] | None = None,
+    rectify_flags: list[str] | None = None,
 ):
-    params_dict: dict[str, str | int | float | list[str]] = {}
+    params_dict: dict[str, str | int | float | list[str] | list[int]] = {}
     params_dict["aruco_dict"] = aruco_dict
     params_dict["squares_per_row"] = squares_per_row
     params_dict["squares_per_col"] = squares_per_col
@@ -347,6 +349,12 @@ def save_calibration_parameters_charuco(
     params_dict["marker_size"] = marker_size
     params_dict["distortion_flags"] = distortion_flags
     params_dict["stereo_calib_flags"] = stereo_calib_flags
+    params_dict["excluded_frames"] = excluded_frames or []
+    if rectify_flags is not None:
+        params_dict["rectify_flags"] = rectify_flags
+    
+    if not filename.exists():
+        filename.parent.mkdir(parents=True, exist_ok=True)
 
     with open(filename, "w") as f:
         yaml.dump(params_dict, f)

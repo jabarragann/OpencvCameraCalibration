@@ -63,6 +63,7 @@ class CameraCalibrationCharucoArgs(Tap):
     aruco_dict: str = "DICT_4X4_250"
     distortion_flags: list[str] = ["CALIB_FIX_K3", "CALIB_ZERO_TANGENT_DIST"]
     stereo_flags: list[str] = ["CALIB_FIX_INTRINSIC"]
+    rectify_flags: list[str] = ["CALIB_ZERO_DISPARITY"]
 
     def configure(self):
         self.add_argument(
@@ -78,4 +79,14 @@ class CameraCalibrationCharucoArgs(Tap):
                 + " Default: CALIB_FIX_INTRINSIC. For MockOR Microscope use: CALIB_USE_INTRINSIC_GUESS"
             ),
             nargs="+",
+        )
+        self.add_argument(
+            "--rectify_flags",
+            help=(
+                "Flags for cv2.stereoRectify. Default: CALIB_ZERO_DISPARITY (same principal point"
+                + " in both rectified images, Z = f*B/d). Pass --rectify_flags with no values to"
+                + " disable it (flags=0); recommended for converging rigs such as stereo microscopes,"
+                + " where depth is then Z = f*B/(d + doffs) with doffs = cx_right - cx_left."
+            ),
+            nargs="*",
         )

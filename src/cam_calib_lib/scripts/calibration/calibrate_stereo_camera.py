@@ -49,10 +49,29 @@ class CliArgs(Tap):
         )
 
 
-def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
+def parse_frame_ids(tokens: Optional[List[str]]) -> set[int]:
+    """Parse frame ids given as e.g. ["0034 0048"], ["0034", "0048"] or ["34,48"]."""
+    ids: set[int] = set()
+    for token in tokens or []:
+        for part in re.split(r"[\s,]+", token.strip()):
+            if not part:
+                continue
+            if not part.isdigit():
+                raise ValueError(f"Invalid frame id to exclude: '{part}' (expected digits, e.g. 0034)")
+            ids.add(int(part))
+    return ids
+
+
+def load_stereo_images(
+    images_path: Path, exclude: Optional[List[str]] = None
+) -> Tuple[List[Path], List[Path]]:
     """
     Load left and right image pairs from the folder.
     Expected naming format: left-xxxx.png and right-xxxx.png
+
+    Args:
+        images_path: Folder with the stereo images.
+        exclude: Frame ids (e.g. ["0034 0048"]) whose pairs are skipped.
     """
     left_images: List[Path] = []
     right_images: List[Path] = []
@@ -79,6 +98,15 @@ def load_stereo_images(images_path: Path) -> Tuple[List[Path], List[Path]]:
 
     # Match pairs by frame number
     common_frames: list[int] = sorted(set(left_dict.keys()) & set(right_dict.keys()))
+
+    excluded_ids = parse_frame_ids(exclude)
+    if excluded_ids:
+        missing = sorted(excluded_ids - set(common_frames))
+        if missing:
+            logger.warning(f"Excluded frame ids not found as stereo pairs: {missing}")
+        excluded_found = sorted(excluded_ids & set(common_frames))
+        logger.info(f"Excluding {len(excluded_found)} stereo pairs: {excluded_found}")
+        common_frames = [f for f in common_frames if f not in excluded_ids]
 
     for frame_num in common_frames:
         left_images.append(left_dict[frame_num])
