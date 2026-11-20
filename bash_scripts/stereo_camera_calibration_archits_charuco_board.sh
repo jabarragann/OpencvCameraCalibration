@@ -7,16 +7,18 @@
 set -e
 set -x
 
-# PYTHON=/opt/miniconda3/envs/surpass312/bin/python
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Defaults to the repo's venv; override with PYTHON=/path/to/python ./script.sh
+PYTHON=${PYTHON:-$repo_root/.venv/bin/python}
 
 pydebug() {
     $PYTHON -m debugpy --listen 5678 --wait-for-client "$@"
 }
 
 camera_name="dvrk_classic"
-dataset=/Users/juan95/research/archits_project/charuco-test-dataset/images
+dataset=$repo_root/charuco_dataset
 # Results go in OpencvCameraCalibration/output, like the other scripts
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_path=$repo_root/output/charuco-test-dataset/results_with_full_dist_$camera_name
 
 # The calibration script doesn't create the output folder itself
@@ -31,8 +33,8 @@ $PYTHON -m cam_calib_lib.scripts.calibration.calibrate_stereo_camera_charuco \
     --camera_name $camera_name \
     --squares_in_x_dim 20 \
     --squares_in_y_dim 15 \
-    --square_size 0.0150 \
-    --marker_size 0.0100 \
+    --square_size 0.006 \
+    --marker_size 0.004 \
     --aruco_dict DICT_4X4_250 \
     --output_path "$output_path" \
     --print_debug \
